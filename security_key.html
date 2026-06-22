@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔑 YICHIP Security Key</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cyan: #00fff2;
+            --green: #00ff88;
+            --red: #ff3355;
+            --magenta: #ff00ff;
+            --orange: #ff8800;
+            --yellow: #ffee00;
+            --bg: #060610;
+            --bg-card: #0a0a1a;
+            --border: #151530;
+            --text: #e0e0ff;
+            --text-dim: #5555aa;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            min-height: 100vh;
+        }
+
+        /* Animated background grid */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image:
+                linear-gradient(rgba(0,255,242,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,255,242,0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        /* HEADER */
+        .header {
+            padding: 24px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            font-size: 1.3rem;
+            letter-spacing: 3px;
+        }
+
+        .logo-gradient {
+            background: linear-gradient(135deg, var(--cyan), var(--green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-sub {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            letter-spacing: 2px;
+            margin-top: 3px;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 0.7rem;
+        }
+
+        .header-stat {
+            text-align: center;
+        }
+
+        .header-stat-val {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .header-stat-label {
+            font-size: 0.55rem;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+            margin-top: 2px;
+        }
+
+        /* LOCK STATUS — El gran candado central */
+        .lock-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 50px 20px 40px;
+            position: relative;
+        }
+
+        .lock-ring {
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .lock-ring.locked {
+            background: radial-gradient(circle, rgba(255,51,85,0.1) 0%, transparent 70%);
+            box-shadow: 0 0 60px rgba(255,51,85,0.15), inset 0 0 60px rgba(255,51,85,0.05);
+        }
+
+        .lock-ring.unlocked {
+            background: radial-gradient(circle, rgba(0,255,136,0.1) 0%, transparent 70%);
+            box-shadow: 0 0 60px rgba(0,255,136,0.15), inset 0 0 60px rgba(0,255,136,0.05);
+        }
+
+        .lock-ring-border {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid;
+            transition: border-color 0.8s;
+        }
+
+        .locked .lock-ring-border {
+            border-color: rgba(255,51,85,0.4);
+            animation: lockPulse 2s infinite;
+        }
+
+        .unlocked .lock-ring-border {
+            border-color: rgba(0,255,136,0.4);
+            animation: unlockPulse 3s infinite;
+        }
+
+        @keyframes lockPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.6; }
+        }
+
+        @keyframes unlockPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.02); opacity: 0.8; }
+        }
+
+        .lock-ring-outer {
+            position: absolute;
+            width: 260px;
+            height: 260px;
+            border-radius: 50%;
+            border: 1px dashed;
+            transition: border-color 0.8s;
+            animation: outerSpin 30s linear infinite;
+        }
+
+        .locked .lock-ring-outer { border-color: rgba(255,51,85,0.15); }
+        .unlocked .lock-ring-outer { border-color: rgba(0,255,136,0.15); }
+
+        @keyframes outerSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .lock-icon {
+            font-size: 5rem;
+            transition: all 0.5s;
+            filter: drop-shadow(0 0 20px currentColor);
+        }
+
+        .locked .lock-icon { color: var(--red); }
+        .unlocked .lock-icon { color: var(--green); }
+
+        .lock-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 900;
+            letter-spacing: 6px;
+            margin-top: 24px;
+            transition: color 0.8s;
+        }
+
+        .locked .lock-label { color: var(--red); }
+        .unlocked .lock-label { color: var(--green); }
+
+        .lock-sublabel {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-top: 8px;
+            letter-spacing: 2px;
+        }
+
+        .lock-dongle-status {
+            margin-top: 16px;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.5s;
+        }
+
+        .locked .lock-dongle-status {
+            border: 1px solid rgba(255,51,85,0.3);
+            color: var(--red);
+            background: rgba(255,51,85,0.05);
+        }
+
+        .unlocked .lock-dongle-status {
+            border: 1px solid rgba(0,255,136,0.3);
+            color: var(--green);
+            background: rgba(0,255,136,0.05);
+        }
+
+        .dongle-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            transition: background 0.5s;
+        }
+
+        .locked .dongle-dot { background: var(--red); animation: lockPulse 1s infinite; }
+        .unlocked .dongle-dot { background: var(--green); }
+
+        /* MAIN GRID */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            padding: 0 24px 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: border-color 0.3s;
+        }
+
+        .card:hover { border-color: rgba(0,255,242,0.2); }
+
+        .card-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--cyan);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-body { padding: 16px 18px; }
+
+        /* VAULT CARD */
+        .vault-card { grid-column: 1 / 3; }
+
+        .vault-form {
+            display: grid;
+            grid-template-columns: 200px 1fr auto;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .vault-input {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: rgba(0,0,0,0.3);
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .vault-input:focus { border-color: var(--cyan); }
+        .vault-input::placeholder { color: var(--text-dim); }
+        .vault-input:disabled { opacity: 0.4; }
+
+        .vault-btn {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--green);
+            background: rgba(0,255,136,0.1);
+            color: var(--green);
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+
+        .vault-btn:hover:not(:disabled) {
+            background: rgba(0,255,136,0.2);
+            box-shadow: 0 0 20px rgba(0,255,136,0.2);
+        }
+
+        .vault-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .vault-files {
+            display: grid;
+            gap: 8px;
+        }
+
+        .vault-file {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            border-radius: 8px;
+            background: rgba(0,255,242,0.03);
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+        }
+
+        .vault-file:hover { border-color: var(--cyan-dim); }
+
+        .vault-file-name {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--cyan);
+        }
+
+        .vault-file-meta {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+
+        .vault-file-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .vault-file-btn {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: 1px solid;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .vault-file-btn.read {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        .vault-file-btn.read:hover {
+            background: rgba(0,255,136,0.15);
+        }
+
+        .vault-file-btn.delete {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        .vault-file-btn.delete:hover {
+            background: rgba(255,51,85,0.15);
+        }
+
+        .vault-empty {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-dim);
+            font-size: 0.75rem;
+        }
+
+        .vault-locked-overlay {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .vault-locked-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+            animation: lockPulse 2s infinite;
+        }
+
+        .vault-locked-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            color: var(--red);
+            letter-spacing: 3px;
+            margin-bottom: 8px;
+        }
+
+        .vault-locked-sub {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+        }
+
+        /* SECRET VIEWER MODAL */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--cyan);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 0 60px rgba(0,255,242,0.15);
+            animation: modalIn 0.3s ease-out;
+        }
+
+        @keyframes modalIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            color: var(--cyan);
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-close {
+            background: none;
+            border: 1px solid var(--text-dim);
+            color: var(--text-dim);
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        .modal-content {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 0.8rem;
+            line-height: 1.6;
+            color: var(--green);
+            max-height: 300px;
+            overflow-y: auto;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+
+        /* HISTORY */
+        .history-card { grid-column: 1; }
+        .activity-card { grid-column: 2; }
+
+        .history-list {
+            max-height: 250px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+            font-size: 0.7rem;
+            animation: historyIn 0.3s ease-out;
+        }
+
+        @keyframes historyIn {
+            from { transform: translateX(-10px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .history-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .history-dot.lock { background: var(--red); }
+        .history-dot.unlock { background: var(--green); }
+
+        .history-time { color: var(--text-dim); font-size: 0.65rem; min-width: 60px; }
+        .history-msg { flex: 1; }
+        .history-msg.lock { color: var(--red); }
+        .history-msg.unlock { color: var(--green); }
+
+        .history-empty {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-dim);
+            font-size: 0.75rem;
+        }
+
+        /* FINGERPRINT */
+        .fingerprint-section {
+            display: grid;
+            gap: 8px;
+        }
+
+        .fp-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 10px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.02);
+            font-size: 0.7rem;
+        }
+
+        .fp-label { color: var(--text-dim); }
+        .fp-value { color: var(--green); font-weight: 500; }
+
+        /* Notification toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 14px 20px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            z-index: 2000;
+            animation: toastIn 0.4s ease-out;
+            display: none;
+        }
+
+        .toast.active { display: block; }
+
+        .toast.lock {
+            background: rgba(255,51,85,0.15);
+            border: 1px solid rgba(255,51,85,0.4);
+            color: var(--red);
+            box-shadow: 0 0 30px rgba(255,51,85,0.2);
+        }
+
+        .toast.unlock {
+            background: rgba(0,255,136,0.15);
+            border: 1px solid rgba(0,255,136,0.4);
+            color: var(--green);
+            box-shadow: 0 0 30px rgba(0,255,136,0.2);
+        }
+
+        @keyframes toastIn {
+            from { transform: translateX(100px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Transition flash */
+        .lock-flash {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 500;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .lock-flash.lock-active {
+            opacity: 1;
+            background: radial-gradient(circle, rgba(255,51,85,0.1) 0%, transparent 70%);
+            animation: flashFade 1s ease-out forwards;
+        }
+
+        .lock-flash.unlock-active {
+            opacity: 1;
+            background: radial-gradient(circle, rgba(0,255,136,0.1) 0%, transparent 70%);
+            animation: flashFade 1s ease-out forwards;
+        }
+
+        @keyframes flashFade {
+            0% { opacity: 0.8; }
+            100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="lock-flash" id="lockFlash"></div>
+<div class="toast" id="toast"></div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+    <div class="modal">
+        <div class="modal-title">
+            <span>🔓 DECRYPTED SECRET</span>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-content" id="modalContent"></div>
+    </div>
+</div>
+
+<!-- Header -->
+<header class="header">
+    <div>
+        <div class="logo"><span class="logo-gradient">🔑 YICHIP SECURITY KEY</span></div>
+        <div class="logo-sub">PHYSICAL AUTHENTICATION DEVICE — USB 3151:3000</div>
+    </div>
+    <div class="header-stats">
+        <div class="header-stat">
+            <div class="header-stat-val" id="statUnlocks" style="color: var(--green)">0</div>
+            <div class="header-stat-label">UNLOCKS</div>
+        </div>
+        <div class="header-stat">
+            <div class="header-stat-val" id="statLocks" style="color: var(--red)">0</div>
+            <div class="header-stat-label">LOCKS</div>
+        </div>
+        <div class="header-stat">
+            <div class="header-stat-val" id="statUptime" style="color: var(--cyan)">00:00</div>
+            <div class="header-stat-label">UPTIME</div>
+        </div>
+    </div>
+</header>
+
+<!-- Lock Status -->
+<section class="lock-section" id="lockSection">
+    <div class="lock-ring-outer"></div>
+    <div class="lock-ring" id="lockRing">
+        <div class="lock-ring-border"></div>
+        <div class="lock-icon" id="lockIcon">🔒</div>
+    </div>
+    <div class="lock-label" id="lockLabel">LOCKED</div>
+    <div class="lock-sublabel" id="lockSublabel">Insert YICHIP dongle to unlock</div>
+    <div class="lock-dongle-status">
+        <div class="dongle-dot"></div>
+        <span id="dongleStatus">DONGLE NOT DETECTED</span>
+    </div>
+</section>
+
+<!-- Main Grid -->
+<div class="main-grid">
+
+    <!-- VAULT -->
+    <div class="card vault-card">
+        <div class="card-header">
+            🗄️ ENCRYPTED VAULT
+            <span id="vaultCount" style="color: var(--green)">0 secrets</span>
+        </div>
+        <div class="card-body" id="vaultBody">
+            <!-- Content injected by JS -->
+        </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="card history-card">
+        <div class="card-header">📜 ACCESS LOG</div>
+        <div class="card-body">
+            <div class="history-list" id="historyList">
+                <div class="history-empty">No events yet — plug/unplug dongle</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DEVICE FINGERPRINT -->
+    <div class="card activity-card">
+        <div class="card-header">🔬 DEVICE FINGERPRINT</div>
+        <div class="card-body">
+            <div class="fingerprint-section">
+                <div class="fp-row"><span class="fp-label">Vendor ID</span><span class="fp-value">0x3151</span></div>
+                <div class="fp-row"><span class="fp-label">Product ID</span><span class="fp-value">0x3000</span></div>
+                <div class="fp-row"><span class="fp-label">Manufacturer</span><span class="fp-value">YICHIP</span></div>
+                <div class="fp-row"><span class="fp-label">Product</span><span class="fp-value">Wireless Device</span></div>
+                <div class="fp-row"><span class="fp-label">Key Hash</span><span class="fp-value" style="font-size:0.6rem; color: var(--magenta)">SHA256:3151:3000</span></div>
+                <div class="fp-row"><span class="fp-label">Cipher</span><span class="fp-value">XOR-256 (demo)</span></div>
+                <div class="fp-row"><span class="fp-label">Role</span><span class="fp-value">Physical Auth Token</span></div>
+                <div class="fp-row"><span class="fp-label">Former Life</span><span class="fp-value" style="color: var(--orange)">Mouse Receiver 🐭</span></div>
+                <div class="fp-row"><span class="fp-label">Mouse Location</span><span class="fp-value" style="color: var(--yellow)">España 🇪🇸 (RIP)</span></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let isLocked = true;
+
+    // ============================
+    // LOAD STATE
+    // ============================
+    async function loadState() {
+        try {
+            const res = await fetch('/api/state');
+            const data = await res.json();
+            updateUI(data);
+        } catch (err) {
+            console.error('Error:', err);
+        }
+    }
+
+    // ============================
+    // UPDATE UI
+    // ============================
+    function updateUI(data) {
+        const wasLocked = isLocked;
+        isLocked = data.locked;
+
+        // Lock section
+        const section = document.getElementById('lockSection');
+        const ring = document.getElementById('lockRing');
+        
+        section.className = `lock-section ${isLocked ? 'locked' : 'unlocked'}`;
+        ring.className = `lock-ring ${isLocked ? 'locked' : 'unlocked'}`;
+        
+        document.getElementById('lockIcon').textContent = isLocked ? '🔒' : '🔓';
+        document.getElementById('lockLabel').textContent = isLocked ? 'LOCKED' : 'UNLOCKED';
+        document.getElementById('lockSublabel').textContent = isLocked 
+            ? 'Insert YICHIP dongle to unlock' 
+            : 'Vault is accessible — dongle authenticated';
+        document.getElementById('dongleStatus').textContent = data.dongle_present 
+            ? 'DONGLE CONNECTED ✓' 
+            : 'DONGLE NOT DETECTED';
+
+        // Stats
+        document.getElementById('statUnlocks').textContent = data.total_unlocks;
+        document.getElementById('statLocks').textContent = data.total_locks;
+
+        // History
+        if (data.history && data.history.length > 0) {
+            document.getElementById('historyList').innerHTML = data.history.slice(0, 20).map(h => `
+                <div class="history-item">
+                    <div class="history-dot ${h.type}"></div>
+                    <span class="history-time">${h.timestamp}</span>
+                    <span class="history-msg ${h.type}">${h.message}</span>
+                </div>
+            `).join('');
+        }
+
+        // Vault
+        renderVault(data.vault_files);
+
+        // Flash effect on state change
+        if (wasLocked !== isLocked) {
+            const flash = document.getElementById('lockFlash');
+            flash.className = 'lock-flash';
+            requestAnimationFrame(() => {
+                flash.classList.add(isLocked ? 'lock-active' : 'unlock-active');
+            });
+        }
+    }
+
+    // ============================
+    // VAULT
+    // ============================
+    function renderVault(files) {
+        const body = document.getElementById('vaultBody');
+        
+        if (isLocked) {
+            body.innerHTML = `
+                <div class="vault-locked-overlay">
+                    <div class="vault-locked-icon">🔒</div>
+                    <div class="vault-locked-text">VAULT LOCKED</div>
+                    <div class="vault-locked-sub">Insert YICHIP dongle to access encrypted secrets</div>
+                </div>
+            `;
+            document.getElementById('vaultCount').textContent = '🔒 LOCKED';
+            return;
+        }
+
+        let html = `
+            <div class="vault-form">
+                <input type="text" class="vault-input" id="secretName" placeholder="Secret name..." />
+                <input type="text" class="vault-input" id="secretContent" placeholder="Secret content to encrypt..." />
+                <button class="vault-btn" onclick="addSecret()">+ ENCRYPT</button>
+            </div>
+        `;
+
+        if (files && files.length > 0) {
+            html += '<div class="vault-files">' + files.map(f => `
+                <div class="vault-file">
+                    <div>
+                        <div class="vault-file-name">🔐 ${f.name}</div>
+                        <div class="vault-file-meta">${f.size} chars · ${new Date(f.created).toLocaleString()}</div>
+                    </div>
+                    <div class="vault-file-actions">
+                        <button class="vault-file-btn read" onclick="readSecret('${f.name}')">DECRYPT</button>
+                        <button class="vault-file-btn delete" onclick="deleteSecret('${f.name}')">DELETE</button>
+                    </div>
+                </div>
+            `).join('') + '</div>';
+            document.getElementById('vaultCount').textContent = files.length + ' secrets';
+        } else {
+            html += '<div class="vault-empty">No secrets stored yet. Add your first encrypted secret above.</div>';
+            document.getElementById('vaultCount').textContent = '0 secrets';
+        }
+
+        body.innerHTML = html;
+    }
+
+    async function addSecret() {
+        const name = document.getElementById('secretName').value.trim();
+        const content = document.getElementById('secretContent').value.trim();
+        if (!name || !content) return;
+
+        const res = await fetch('/api/secret', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name, content})
+        });
+        const result = await res.json();
+        
+        if (result.error) {
+            showToast(result.error, 'lock');
+        } else {
+            showToast(`🔐 "${name}" encrypted & stored`, 'unlock');
+            loadState();
+        }
+    }
+
+    async function readSecret(name) {
+        const res = await fetch(`/api/secret/${name}`);
+        const result = await res.json();
+        
+        if (result.error) {
+            showToast(result.error, 'lock');
+        } else {
+            document.getElementById('modalContent').textContent = result.content;
+            document.getElementById('modal').classList.add('active');
+        }
+    }
+
+    async function deleteSecret(name) {
+        const res = await fetch(`/api/secret/delete/${name}`, {method: 'POST'});
+        const result = await res.json();
+        
+        if (result.error) {
+            showToast(result.error, 'lock');
+        } else {
+            showToast(`🗑️ "${name}" deleted`, 'lock');
+            loadState();
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('modal').classList.remove('active');
+    }
+
+    // ============================
+    // SSE
+    // ============================
+    function connectSSE() {
+        const src = new EventSource('/api/events');
+        
+        src.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            
+            if (data.type === 'lock' || data.type === 'unlock') {
+                showToast(data.message, data.type);
+                loadState();
+            } else if (data.type === 'heartbeat') {
+                document.getElementById('statUptime').textContent = data.uptime;
+            }
+        };
+
+        src.onerror = () => setTimeout(connectSSE, 3000);
+    }
+
+    // ============================
+    // TOAST
+    // ============================
+    function showToast(msg, type) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.className = `toast active ${type}`;
+        setTimeout(() => toast.classList.remove('active'), 3000);
+    }
+
+    // ============================
+    // INIT
+    // ============================
+    loadState();
+    connectSSE();
+</script>
+
+</body>
+</html>

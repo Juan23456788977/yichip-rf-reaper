@@ -1,0 +1,7 @@
+## RF-REAPER — YICHIP Dongle udev rules
+## Install: sudo cp 99-yichip.rules /etc/udev/rules.d/
+## Then: sudo udevadm control --reload-rules && sudo udevadm trigger
+
+# YICHIP Wireless Device (3151:3000) — grant user access to HID
+SUBSYSTEM=="usb", ATTRS{idVendor}=="3151", ATTRS{idProduct}=="3000", MODE="0666"
+KERNEL=="hidraw*", ATTRS{idVendor}=="3151", ATTRS{idProduct}=="3000", MODE="0666"

@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YICHIP HACKING DASHBOARD</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cyan: #00fff2;
+            --cyan-dim: #00fff233;
+            --magenta: #ff00ff;
+            --magenta-dim: #ff00ff33;
+            --green: #00ff88;
+            --green-dim: #00ff8833;
+            --red: #ff3355;
+            --red-dim: #ff335533;
+            --orange: #ff8800;
+            --yellow: #ffee00;
+            --bg: #0a0a0f;
+            --bg-card: #0d0d1a;
+            --bg-card-hover: #111128;
+            --border: #1a1a3a;
+            --text: #e0e0ff;
+            --text-dim: #6666aa;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Scanline effect */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 255, 242, 0.015) 2px,
+                rgba(0, 255, 242, 0.015) 4px
+            );
+            z-index: 9999;
+        }
+
+        /* Grid noise background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(0, 255, 242, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 0, 255, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 50% 80%, rgba(0, 255, 136, 0.02) 0%, transparent 50%);
+            z-index: -1;
+        }
+
+        /* HEADER */
+        .header {
+            padding: 20px 30px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(180deg, rgba(0,255,242,0.05) 0%, transparent 100%);
+        }
+
+        .header-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 900;
+            background: linear-gradient(90deg, var(--cyan), var(--magenta));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 40px rgba(0, 255, 242, 0.3);
+            letter-spacing: 3px;
+        }
+
+        .header-subtitle {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            letter-spacing: 2px;
+            margin-top: 4px;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--cyan-dim);
+            background: rgba(0, 255, 242, 0.05);
+            font-size: 0.75rem;
+            color: var(--cyan);
+        }
+
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--cyan);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0, 255, 242, 0.4); }
+            50% { opacity: 0.5; box-shadow: 0 0 0 8px rgba(0, 255, 242, 0); }
+        }
+
+        /* MAIN GRID */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto auto auto;
+            gap: 16px;
+            padding: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* CARDS */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--cyan-dim);
+            background: var(--bg-card-hover);
+        }
+
+        .card-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--cyan);
+            text-transform: uppercase;
+        }
+
+        .card-body {
+            padding: 18px;
+        }
+
+        /* RADAR CARD */
+        .radar-card {
+            grid-column: 1;
+            grid-row: 1 / 3;
+        }
+
+        .radar-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .radar-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .radar-sweep {
+            animation: sweep 3s linear infinite;
+            transform-origin: 50% 50%;
+        }
+
+        @keyframes sweep {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .radar-blip {
+            animation: blip 1.5s ease-out infinite;
+        }
+
+        @keyframes blip {
+            0% { opacity: 1; r: 3; }
+            100% { opacity: 0; r: 12; }
+        }
+
+        .radar-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .radar-stat {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(0, 255, 242, 0.03);
+            border: 1px solid var(--border);
+        }
+
+        .radar-stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--cyan);
+        }
+
+        .radar-stat-label {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+            margin-top: 2px;
+        }
+
+        /* DEVICE INFO */
+        .info-card {
+            grid-column: 2;
+        }
+
+        .info-grid {
+            display: grid;
+            gap: 8px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.02);
+            font-size: 0.75rem;
+        }
+
+        .info-label {
+            color: var(--text-dim);
+        }
+
+        .info-value {
+            color: var(--green);
+            font-weight: 500;
+        }
+
+        /* CAPABILITIES */
+        .cap-card {
+            grid-column: 3;
+            grid-row: 1 / 3;
+        }
+
+        .cap-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .cap-item {
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 3px solid var(--cyan);
+            background: rgba(0, 255, 242, 0.03);
+            cursor: default;
+            transition: all 0.2s;
+        }
+
+        .cap-item:hover {
+            background: rgba(0, 255, 242, 0.07);
+            transform: translateX(4px);
+        }
+
+        .cap-item.danger-high {
+            border-left-color: var(--red);
+            background: rgba(255, 51, 85, 0.03);
+        }
+
+        .cap-item.danger-high:hover {
+            background: rgba(255, 51, 85, 0.07);
+        }
+
+        .cap-item.danger-medium {
+            border-left-color: var(--orange);
+            background: rgba(255, 136, 0, 0.03);
+        }
+
+        .cap-name {
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .cap-desc {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            line-height: 1.4;
+        }
+
+        /* VULNERABILITIES */
+        .vuln-card {
+            grid-column: 2;
+        }
+
+        .vuln-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .vuln-item {
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: rgba(255, 51, 85, 0.05);
+            border: 1px solid rgba(255, 51, 85, 0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .vuln-name {
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .vuln-severity {
+            font-size: 0.6rem;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .vuln-severity.HIGH {
+            background: rgba(255, 51, 85, 0.2);
+            color: var(--red);
+        }
+
+        .vuln-severity.MEDIUM {
+            background: rgba(255, 136, 0, 0.2);
+            color: var(--orange);
+        }
+
+        /* PACKET LOG */
+        .packet-card {
+            grid-column: 1 / 4;
+        }
+
+        .packet-log {
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 0.7rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--cyan-dim) transparent;
+        }
+
+        .packet-log::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .packet-log::-webkit-scrollbar-thumb {
+            background: var(--cyan-dim);
+            border-radius: 3px;
+        }
+
+        .packet-entry {
+            display: grid;
+            grid-template-columns: 90px 140px 1fr auto;
+            gap: 12px;
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            transition: background 0.2s;
+            align-items: center;
+        }
+
+        .packet-entry:hover {
+            background: rgba(0, 255, 242, 0.03);
+        }
+
+        .packet-entry.new {
+            animation: packetFlash 0.5s ease-out;
+        }
+
+        @keyframes packetFlash {
+            0% { background: rgba(0, 255, 242, 0.15); }
+            100% { background: transparent; }
+        }
+
+        .packet-time { color: var(--text-dim); }
+        .packet-device { color: var(--magenta); }
+        .packet-hex { color: var(--green); font-family: 'JetBrains Mono', monospace; word-break: break-all; }
+        .packet-analysis { color: var(--yellow); font-size: 0.65rem; }
+
+        .packet-empty {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+        }
+
+        .packet-empty-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            opacity: 0.5;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* HID DESCRIPTOR */
+        .hid-card {
+            grid-column: 1 / 4;
+        }
+
+        .hid-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7rem;
+        }
+
+        .hid-table th {
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            color: var(--cyan);
+            font-weight: 500;
+            font-size: 0.65rem;
+            letter-spacing: 1px;
+        }
+
+        .hid-table td {
+            padding: 6px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+        }
+
+        .hid-table tr:hover td {
+            background: rgba(0, 255, 242, 0.03);
+        }
+
+        .hid-table .vendor {
+            background: rgba(255, 0, 255, 0.08);
+            border-left: 3px solid var(--magenta);
+        }
+
+        .hid-offset { color: var(--text-dim); }
+        .hid-raw { color: var(--green); }
+        .hid-meaning { color: var(--text); }
+        .hid-type { 
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(0, 255, 242, 0.1);
+            color: var(--cyan);
+        }
+
+        .hid-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 12px;
+        }
+
+        .hid-tab {
+            padding: 8px 16px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-dim);
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.2s;
+        }
+
+        .hid-tab:first-child { border-radius: 6px 0 0 6px; }
+        .hid-tab:last-child { border-radius: 0 6px 6px 0; }
+
+        .hid-tab.active {
+            background: var(--cyan-dim);
+            color: var(--cyan);
+            border-color: var(--cyan);
+        }
+
+        .hid-tab:hover:not(.active) {
+            background: rgba(255,255,255,0.03);
+        }
+
+        .hid-content { display: none; }
+        .hid-content.active { display: block; }
+
+        .hid-scroll {
+            max-height: 350px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--cyan-dim) transparent;
+        }
+
+        /* PROBE BUTTON */
+        .probe-card {
+            grid-column: 1 / 4;
+        }
+
+        .probe-section {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        .probe-controls {
+            flex-shrink: 0;
+        }
+
+        .probe-btn {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            padding: 14px 28px;
+            border: 2px solid var(--magenta);
+            background: rgba(255, 0, 255, 0.1);
+            color: var(--magenta);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .probe-btn:hover {
+            background: rgba(255, 0, 255, 0.2);
+            box-shadow: 0 0 30px rgba(255, 0, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .probe-btn:active {
+            transform: translateY(0);
+        }
+
+        .probe-btn::after {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent 40%,
+                rgba(255, 0, 255, 0.1) 50%,
+                transparent 60%
+            );
+            animation: btnShine 3s infinite;
+        }
+
+        @keyframes btnShine {
+            0% { transform: translateX(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) rotate(45deg); }
+        }
+
+        .probe-btn.loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .probe-results {
+            flex: 1;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .probe-result {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 0.7rem;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+        }
+
+        .probe-cmd { color: var(--magenta); font-weight: 600; }
+        .probe-status { font-size: 0.6rem; padding: 2px 8px; border-radius: 10px; }
+        .probe-status.RESPONSE { background: rgba(0,255,136,0.2); color: var(--green); }
+        .probe-status.NO_RESPONSE { background: rgba(255,136,0,0.2); color: var(--orange); }
+        .probe-status.WRITE_ERROR { background: rgba(255,51,85,0.2); color: var(--red); }
+        .probe-status.PERMISSION_DENIED { background: rgba(255,51,85,0.2); color: var(--red); }
+
+        .probe-response {
+            font-size: 0.65rem;
+            color: var(--green);
+            word-break: break-all;
+            margin-top: 4px;
+        }
+
+        /* FOOTER */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-dim);
+            font-size: 0.6rem;
+            letter-spacing: 2px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Loading animation */
+        .loading-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            transition: opacity 0.5s;
+        }
+
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            color: var(--cyan);
+            letter-spacing: 4px;
+            animation: loadPulse 1.5s infinite;
+        }
+
+        @keyframes loadPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .loading-bar {
+            width: 200px;
+            height: 2px;
+            background: var(--border);
+            margin-top: 20px;
+            border-radius: 1px;
+            overflow: hidden;
+        }
+
+        .loading-bar-fill {
+            height: 100%;
+            width: 30%;
+            background: linear-gradient(90deg, var(--cyan), var(--magenta));
+            border-radius: 1px;
+            animation: loadBar 1.5s ease-in-out infinite;
+        }
+
+        @keyframes loadBar {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(400%); }
+        }
+
+        /* Glitch effect on title hover */
+        .header-title:hover {
+            animation: glitch 0.3s ease;
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(2px, -2px); }
+            60% { transform: translate(-1px, -1px); }
+            80% { transform: translate(1px, 1px); }
+            100% { transform: translate(0); }
+        }
+
+        .warn-box {
+            padding: 10px 14px;
+            border-radius: 8px;
+            background: rgba(255, 136, 0, 0.05);
+            border: 1px solid rgba(255, 136, 0, 0.2);
+            font-size: 0.7rem;
+            color: var(--orange);
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-text">INITIALIZING</div>
+    <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+</div>
+
+<!-- Header -->
+<header class="header">
+    <div>
+        <div class="header-title">⚡ YICHIP HACKING DASHBOARD</div>
+        <div class="header-subtitle">RF DONGLE FORENSICS & EXPLOITATION TOOLKIT</div>
+    </div>
+    <div class="status-badge">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">CONNECTING...</span>
+    </div>
+</header>
+
+<!-- Dashboard Grid -->
+<div class="dashboard">
+
+    <!-- RADAR -->
+    <div class="card radar-card">
+        <div class="card-header">
+            📡 RF SIGNAL RADAR
+            <span id="radarPackets" style="color: var(--green);">0 PKT</span>
+        </div>
+        <div class="card-body">
+            <div class="radar-container">
+                <svg class="radar-svg" viewBox="0 0 300 300">
+                    <!-- Background circles -->
+                    <circle cx="150" cy="150" r="140" fill="none" stroke="rgba(0,255,242,0.08)" stroke-width="1"/>
+                    <circle cx="150" cy="150" r="105" fill="none" stroke="rgba(0,255,242,0.06)" stroke-width="1"/>
+                    <circle cx="150" cy="150" r="70" fill="none" stroke="rgba(0,255,242,0.04)" stroke-width="1"/>
+                    <circle cx="150" cy="150" r="35" fill="none" stroke="rgba(0,255,242,0.03)" stroke-width="1"/>
+                    
+                    <!-- Cross lines -->
+                    <line x1="10" y1="150" x2="290" y2="150" stroke="rgba(0,255,242,0.05)" stroke-width="1"/>
+                    <line x1="150" y1="10" x2="150" y2="290" stroke="rgba(0,255,242,0.05)" stroke-width="1"/>
+                    <line x1="50" y1="50" x2="250" y2="250" stroke="rgba(0,255,242,0.03)" stroke-width="1"/>
+                    <line x1="250" y1="50" x2="50" y2="250" stroke="rgba(0,255,242,0.03)" stroke-width="1"/>
+                    
+                    <!-- Sweep -->
+                    <g class="radar-sweep">
+                        <line x1="150" y1="150" x2="150" y2="10" stroke="rgba(0,255,242,0.6)" stroke-width="2"/>
+                        <path d="M 150 150 L 150 10 A 140 140 0 0 0 50 50 Z" 
+                              fill="url(#sweepGrad)" opacity="0.3"/>
+                    </g>
+                    
+                    <!-- Center dot -->
+                    <circle cx="150" cy="150" r="4" fill="var(--cyan)" opacity="0.8"/>
+                    <circle cx="150" cy="150" r="8" fill="none" stroke="var(--cyan)" stroke-width="1" opacity="0.4"/>
+                    
+                    <!-- Dongle position (fixed) -->
+                    <circle cx="150" cy="150" r="6" fill="none" stroke="var(--green)" stroke-width="2" opacity="0.8"/>
+                    <text x="160" y="168" fill="var(--green)" font-size="8" font-family="JetBrains Mono">DONGLE</text>
+                    
+                    <!-- Blip container -->
+                    <g id="radarBlips"></g>
+                    
+                    <defs>
+                        <radialGradient id="sweepGrad" cx="50%" cy="50%">
+                            <stop offset="0%" stop-color="rgba(0,255,242,0.3)"/>
+                            <stop offset="100%" stop-color="rgba(0,255,242,0)"/>
+                        </radialGradient>
+                    </defs>
+                </svg>
+            </div>
+            <div class="radar-stats">
+                <div class="radar-stat">
+                    <div class="radar-stat-value" id="totalPackets">0</div>
+                    <div class="radar-stat-label">PACKETS</div>
+                </div>
+                <div class="radar-stat">
+                    <div class="radar-stat-value" id="signalStatus">NONE</div>
+                    <div class="radar-stat-label">SIGNAL</div>
+                </div>
+                <div class="radar-stat">
+                    <div class="radar-stat-value" id="uptime">00:00</div>
+                    <div class="radar-stat-label">UPTIME</div>
+                </div>
+                <div class="radar-stat">
+                    <div class="radar-stat-value" id="channelStatus">2.4G</div>
+                    <div class="radar-stat-label">CHANNEL</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DEVICE INFO -->
+    <div class="card info-card">
+        <div class="card-header">
+            🔍 DEVICE FORENSICS
+        </div>
+        <div class="card-body">
+            <div class="info-grid" id="deviceInfo">
+                <div class="info-row"><span class="info-label">Loading...</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VULNERABILITIES -->
+    <div class="card vuln-card">
+        <div class="card-header">
+            ⚠️ VULNERABILITIES
+            <span id="vulnCount" style="color: var(--red);">--</span>
+        </div>
+        <div class="card-body">
+            <div class="vuln-list" id="vulnList">
+                <div style="color: var(--text-dim); font-size: 0.75rem;">Scanning...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CAPABILITIES -->
+    <div class="card cap-card">
+        <div class="card-header">
+            🔓 CAPABILITIES FOUND
+        </div>
+        <div class="card-body">
+            <div class="cap-list" id="capList">
+                <div style="color: var(--text-dim); font-size: 0.75rem;">Analyzing...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROBE / EXPLOIT -->
+    <div class="card probe-card">
+        <div class="card-header">
+            🔥 VENDOR COMMAND PROBE
+            <span style="color: var(--text-dim); font-size: 0.6rem;">Report ID 0xBA</span>
+        </div>
+        <div class="card-body">
+            <div class="warn-box">
+                ⚠️ Envía comandos al chip YICHIP via canal HID oculto. Puede intentar activar modo pairing.
+                Si necesitas permisos de escritura: <code>sudo chmod 666 /dev/hidraw2</code>
+            </div>
+            <div class="probe-section">
+                <div class="probe-controls">
+                    <button class="probe-btn" id="probeBtn" onclick="runProbe()">
+                        ⚡ LAUNCH PROBE
+                    </button>
+                </div>
+                <div class="probe-results" id="probeResults">
+                    <div style="color: var(--text-dim); font-size: 0.75rem; text-align: center; padding: 20px;">
+                        Presiona el botón para enviar comandos vendor al chip
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PACKET LOG -->
+    <div class="card packet-card">
+        <div class="card-header">
+            📦 LIVE PACKET MONITOR
+            <span id="packetCounter" style="color: var(--green);">0 captured</span>
+        </div>
+        <div class="card-body">
+            <div class="packet-log" id="packetLog">
+                <div class="packet-empty">
+                    <div class="packet-empty-icon">📡</div>
+                    <div>Esperando señales del mouse perdido...</div>
+                    <div style="font-size: 0.65rem; margin-top: 6px; color: var(--text-dim);">
+                        Si alguien enciende el mouse cerca, los paquetes aparecerán aquí
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HID DESCRIPTORS -->
+    <div class="card hid-card">
+        <div class="card-header">
+            🧬 HID REPORT DESCRIPTORS (REVERSE ENGINEERED)
+        </div>
+        <div class="card-body">
+            <div class="hid-tabs">
+                <div class="hid-tab active" onclick="switchHidTab(this, 'keyboard')">⌨️ Keyboard</div>
+                <div class="hid-tab" onclick="switchHidTab(this, 'mouse')">🖱️ Mouse</div>
+            </div>
+            <div class="hid-content active" id="hid-keyboard">
+                <div class="hid-scroll" id="hidKeyboardTable">Loading...</div>
+            </div>
+            <div class="hid-content" id="hid-mouse">
+                <div class="hid-scroll" id="hidMouseTable">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<footer class="footer">
+    YICHIP HACKING DASHBOARD v1.0 — FOR EDUCATIONAL PURPOSES ONLY — VENDOR: 3151 PRODUCT: 3000
+</footer>
+
+<script>
+    let startTime = Date.now();
+    let packetCount = 0;
+
+    // ============================
+    // LOAD DONGLE INFO
+    // ============================
+    async function loadInfo() {
+        try {
+            const res = await fetch('/api/info');
+            const info = await res.json();
+
+            // Device Info
+            const infoGrid = document.getElementById('deviceInfo');
+            infoGrid.innerHTML = `
+                <div class="info-row"><span class="info-label">Vendor ID</span><span class="info-value">0x${info.vendor_id}</span></div>
+                <div class="info-row"><span class="info-label">Product ID</span><span class="info-value">0x${info.product_id}</span></div>
+                <div class="info-row"><span class="info-label">Manufacturer</span><span class="info-value">${info.manufacturer}</span></div>
+                <div class="info-row"><span class="info-label">Product</span><span class="info-value">${info.product}</span></div>
+                <div class="info-row"><span class="info-label">USB Version</span><span class="info-value">${info.usb_version}</span></div>
+                <div class="info-row"><span class="info-label">Interfaces</span><span class="info-value">2 (Keyboard + Mouse)</span></div>
+                <div class="info-row"><span class="info-label">Vendor Channel</span><span class="info-value" style="color: var(--red);">0xBA (31 bytes)</span></div>
+                <div class="info-row"><span class="info-label">Vendor Page</span><span class="info-value" style="color: var(--magenta);">0xFFBC</span></div>
+            `;
+
+            // Capabilities
+            const capList = document.getElementById('capList');
+            capList.innerHTML = info.capabilities.map(cap => `
+                <div class="cap-item danger-${cap.danger_level}">
+                    <div class="cap-name">${cap.icon} ${cap.name}</div>
+                    <div class="cap-desc">${cap.description}</div>
+                </div>
+            `).join('');
+
+            // Vulnerabilities
+            const vulnList = document.getElementById('vulnList');
+            vulnList.innerHTML = info.vulnerabilities.map(vuln => `
+                <div class="vuln-item">
+                    <div>
+                        <div class="vuln-name">${vuln.name}</div>
+                        <div style="font-size: 0.6rem; color: var(--text-dim); margin-top: 2px;">${vuln.description}</div>
+                    </div>
+                    <span class="vuln-severity ${vuln.severity}">${vuln.severity}</span>
+                </div>
+            `).join('');
+            document.getElementById('vulnCount').textContent = info.vulnerabilities.length + ' FOUND';
+
+            // HID Descriptors
+            for (const [name, desc] of Object.entries(info.descriptors)) {
+                if (desc.error) continue;
+                const tabId = name.includes('Keyboard') ? 'hidKeyboardTable' : 'hidMouseTable';
+                const container = document.getElementById(tabId);
+                
+                let html = `<div style="font-size: 0.65rem; color: var(--text-dim); margin-bottom: 8px;">
+                    RAW: <span style="color: var(--green);">${desc.raw_hex}</span>
+                </div>`;
+                
+                html += `<table class="hid-table"><thead><tr>
+                    <th>OFFSET</th><th>RAW</th><th>TYPE</th><th>MEANING</th>
+                </tr></thead><tbody>`;
+                
+                for (const item of desc.parsed_items) {
+                    const isVendor = item.meaning && (
+                        item.meaning.includes('VENDOR') || 
+                        item.meaning.includes('0xFF') ||
+                        item.meaning.includes('0xBA') ||
+                        item.meaning.includes('Report ID: 186')
+                    );
+                    
+                    html += `<tr class="${isVendor ? 'vendor' : ''}">
+                        <td class="hid-offset">0x${item.offset.toString(16).padStart(3, '0')}</td>
+                        <td class="hid-raw">${item.raw}</td>
+                        <td><span class="hid-type">${item.type}</span></td>
+                        <td class="hid-meaning">${isVendor ? '🔴 ' : ''}${item.meaning || ''}</td>
+                    </tr>`;
+                }
+                
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            }
+
+            // Hide loading
+            setTimeout(() => {
+                document.getElementById('loadingOverlay').classList.add('hidden');
+            }, 1500);
+
+        } catch (err) {
+            console.error('Error loading info:', err);
+        }
+    }
+
+    // ============================
+    // SSE - LIVE EVENTS
+    // ============================
+    function connectSSE() {
+        const evtSource = new EventSource('/api/events');
+        
+        evtSource.onopen = () => {
+            document.getElementById('statusText').textContent = 'MONITORING';
+            document.getElementById('statusDot').style.background = 'var(--green)';
+        };
+
+        evtSource.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+
+            if (data.type === 'packet') {
+                packetCount++;
+                addPacket(data);
+                addRadarBlip();
+                document.getElementById('totalPackets').textContent = packetCount;
+                document.getElementById('radarPackets').textContent = packetCount + ' PKT';
+                document.getElementById('packetCounter').textContent = packetCount + ' captured';
+                document.getElementById('signalStatus').textContent = 'ACTIVE';
+                document.getElementById('signalStatus').style.color = 'var(--green)';
+            } else if (data.type === 'heartbeat') {
+                // Update uptime
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const min = Math.floor(elapsed / 60).toString().padStart(2, '0');
+                const sec = (elapsed % 60).toString().padStart(2, '0');
+                document.getElementById('uptime').textContent = `${min}:${sec}`;
+            }
+        };
+
+        evtSource.onerror = () => {
+            document.getElementById('statusText').textContent = 'RECONNECTING...';
+            document.getElementById('statusDot').style.background = 'var(--red)';
+            setTimeout(() => connectSSE(), 3000);
+        };
+    }
+
+    // ============================
+    // PACKET UI
+    // ============================
+    function addPacket(pkt) {
+        const log = document.getElementById('packetLog');
+        
+        // Remove empty state
+        const empty = log.querySelector('.packet-empty');
+        if (empty) empty.remove();
+
+        const entry = document.createElement('div');
+        entry.className = 'packet-entry new';
+        entry.innerHTML = `
+            <span class="packet-time">${pkt.timestamp}</span>
+            <span class="packet-device">${pkt.device}</span>
+            <span class="packet-hex">${pkt.raw}</span>
+            <span class="packet-analysis">${pkt.analysis ? pkt.analysis.description : ''}</span>
+        `;
+        log.prepend(entry);
+
+        // Keep max 100
+        while (log.children.length > 100) {
+            log.removeChild(log.lastChild);
+        }
+    }
+
+    // ============================
+    // RADAR BLIPS
+    // ============================
+    function addRadarBlip() {
+        const blips = document.getElementById('radarBlips');
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 30 + Math.random() * 100;
+        const x = 150 + Math.cos(angle) * dist;
+        const y = 150 + Math.sin(angle) * dist;
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', x);
+        circle.setAttribute('cy', y);
+        circle.setAttribute('r', '3');
+        circle.setAttribute('fill', 'var(--cyan)');
+        circle.classList.add('radar-blip');
+        blips.appendChild(circle);
+
+        setTimeout(() => circle.remove(), 1500);
+    }
+
+    // ============================
+    // HID TABS
+    // ============================
+    function switchHidTab(el, name) {
+        document.querySelectorAll('.hid-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.hid-content').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById('hid-' + name).classList.add('active');
+    }
+
+    // ============================
+    // PROBE
+    // ============================
+    async function runProbe() {
+        const btn = document.getElementById('probeBtn');
+        const results = document.getElementById('probeResults');
+        
+        btn.classList.add('loading');
+        btn.textContent = '⏳ PROBING...';
+        results.innerHTML = '<div style="color: var(--magenta); font-size: 0.75rem; text-align: center; padding: 20px;">Enviando comandos vendor al chip YICHIP...</div>';
+
+        try {
+            const res = await fetch('/api/probe');
+            const data = await res.json();
+
+            results.innerHTML = data.map(r => `
+                <div class="probe-result">
+                    <div>
+                        <span class="probe-cmd">${r.command}</span>
+                        ${r.response ? `<div class="probe-response">${r.response}</div>` : ''}
+                        ${r.error ? `<div style="font-size: 0.6rem; color: var(--red); margin-top: 4px;">${r.error}</div>` : ''}
+                    </div>
+                    <span class="probe-status ${r.status}">${r.status}</span>
+                </div>
+            `).join('');
+        } catch (err) {
+            results.innerHTML = `<div style="color: var(--red); padding: 20px;">Error: ${err.message}</div>`;
+        }
+
+        btn.classList.remove('loading');
+        btn.textContent = '⚡ LAUNCH PROBE';
+    }
+
+    // ============================
+    // INIT
+    // ============================
+    loadInfo();
+    connectSSE();
+</script>
+
+</body>
+</html>
